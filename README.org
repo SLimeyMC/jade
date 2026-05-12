@@ -1,4 +1,7 @@
-#+title: What to do
+#+TITLE: Jade Language
+#+AUTHOR: SlimeyAr
+#+DATE: [2026-05-12 Tue]
+#+SINCE: 0.1
 
 * Outline
 Jade are dialect of Lisp. To make an extensible configuration file where data and code is indistinguishable. Currently it is in production and most if feature hasn't been implemented. This README serve as what could be of the language once everything is implemented.
