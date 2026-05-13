@@ -25,6 +25,7 @@ fn fnLet(
 	try env.def(name, .{.value = value.*, .mutable = false});
 	return Expr.nil(allocator);
 }
+const variables = @import("directive/variables.zig");
 
 pub fn main(init: std.process.Init) !void {
 	const allocator = init.gpa;
@@ -51,6 +52,10 @@ pub fn main(init: std.process.Init) !void {
 	try fns.put("quasiquote", .{ .special = quote.fnQuasiquote });
 	try fns.put("let", .{ .special = fnLet });
 
+	try fns.put("do", .{ .special = variables.fnDo });
+	try fns.put("let", .{ .special = variables.fnLet });
+	try fns.put("var", .{ .special = variables.fnVar });
+	try fns.put("set", .{ .special = variables.fnSet });
 
 	var stdin_buffer: [4096]u8 = undefined;
 	var stdout_buffer: [4096]u8 = undefined;
