@@ -1,4 +1,3 @@
-// eval.zig
 const std = @import("std");
 const reader = @import("reader.zig");
 const Expr = reader.Expr;

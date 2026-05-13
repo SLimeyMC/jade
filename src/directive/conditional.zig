@@ -7,7 +7,7 @@ const FnTable = eval.FnTable;
 const Fn = eval.Fn;
 const EvalError = eval.EvalError;
 
-pub fn fnCond(
+pub fn fnWhen(
 	args: []const *Expr,
 	env: *Env,
 	fns: *FnTable,
@@ -20,11 +20,9 @@ pub fn fnCond(
 		const condition = clause.car();
 		const expr = clause.cdr().car();
 
-		if (condition.* == .Symbol and
-			std.mem.eql(u8, condition.Symbol, "else"))
-			{
-				return eval.eval(expr, env, fns, allocator);
-			}
+		if (condition.* == .Symbol and std.mem.eql(u8, condition.Symbol, "else")) {
+			return eval.eval(expr, env, fns, allocator);
+		}
 
 		const result = try eval.eval(
 			condition,
@@ -33,7 +31,7 @@ pub fn fnCond(
 			allocator,
 		);
 
-		if (result.isTruthy()) {
+		if (result.toBool()) {
 			return eval.eval(
 				expr,
 				env,
