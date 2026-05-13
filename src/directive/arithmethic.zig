@@ -1,7 +1,7 @@
 const std = @import("std");
 const reader = @import("../reader.zig");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig").Env;
+const Env = @import("../env.zig");
 const Expr = reader.Expr;
 const FnTable = eval.FnTable;
 const Fn = eval.Fn;
@@ -60,7 +60,7 @@ pub fn fnMul(
 		}.f,
 	);
 	for (args) |arg|
-		try allocator.free(arg);
+		allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 

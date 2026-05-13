@@ -1,11 +1,12 @@
 const std = @import("std");
-const Env = @import("env.zig").Env;
+const Env = @import("env.zig");
 const EvalError = @import("eval.zig").EvalError;
 
 pub const ReaderError = error {
 UnexpectedRParen,
 UnexpectedEOF,
 UnexpectedEndOfStream,
+UnterminatedSymbol,
 OutOfMemory,
 };
 

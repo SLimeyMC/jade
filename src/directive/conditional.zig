@@ -1,7 +1,7 @@
 const std = @import("std");
 const reader = @import("../reader.zig");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig").Env;
+const Env = @import("../env.zig");
 const Expr = reader.Expr;
 const FnTable = eval.FnTable;
 const Fn = eval.Fn;
@@ -31,7 +31,7 @@ pub fn fnWhen(
 			allocator,
 		);
 
-		if (result.toBool()) {
+		if (try result.toBool()) {
 			return eval.eval(
 				expr,
 				env,

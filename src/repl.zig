@@ -1,7 +1,7 @@
 const std = @import("std");
 const reader = @import("reader.zig");
 const eval = @import("eval.zig");
-const Env = @import("env.zig").Env;
+const Env = @import("env.zig");
 const Expr = reader.Expr;
 const FnTable = eval.FnTable;
 const Fn = eval.Fn;
@@ -46,7 +46,7 @@ pub fn main(init: std.process.Init) !void {
 	try fns.put(">=", .{ .eager = comparison.fnLte });
 	try fns.put("<", .{ .eager = comparison.fnGt });
 	try fns.put("<=", .{ .eager = comparison.fnGte });
-	try fns.put("cond", .{ .special = conditional.fnCond });
+	try fns.put("cond", .{ .special = conditional.fnWhen });
 	try fns.put("quote", .{ .special = quote.fnQuote });
 	try fns.put("quasiquote", .{ .special = quote.fnQuasiquote });
 	try fns.put("let", .{ .special = fnLet });
@@ -115,8 +115,6 @@ pub fn main(init: std.process.Init) !void {
 		},
 	}
 }
-
-
 
 fn printExpr(expr: *Expr, writer: *std.Io.Writer) !void {
 	switch (expr.*) {

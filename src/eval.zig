@@ -1,7 +1,7 @@
 const std = @import("std");
 const reader = @import("reader.zig");
 const Expr = reader.Expr;
-const Env = @import("env.zig").Env;
+const Env = @import("env.zig");
 
 pub const EvalError = error {
 UnboundSymbol,
