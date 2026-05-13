@@ -9,23 +9,8 @@ const arithmethic = @import("directive/arithmethic.zig");
 const comparison = @import("directive/comparison.zig");
 const conditional = @import("directive/conditional.zig");
 const quote = @import("directive/quote.zig");
-
-fn fnLet(
-	args: []const *Expr,
-	env: *Env,
-	fns: *FnTable,
-	allocator: std.mem.Allocator,
-) eval.EvalError!*Expr {
-	if (args.len != 2)return error.ArityError;
-	const name = switch (args[0].*) {
-		.Symbol => |s| s,
-		else => return error.TypeError,
-	};
-	const value = try eval.eval(args[1], env, fns, allocator);
-	try env.def(name, .{.value = value.*, .mutable = false});
-	return Expr.nil(allocator);
-}
 const variables = @import("directive/variables.zig");
+const logic = @import("directive/logic.zig");
 
 pub fn main(init: std.process.Init) !void {
 	const allocator = init.gpa;
@@ -50,12 +35,13 @@ pub fn main(init: std.process.Init) !void {
 	try fns.put("cond", .{ .special = conditional.fnWhen });
 	try fns.put("quote", .{ .special = quote.fnQuote });
 	try fns.put("quasiquote", .{ .special = quote.fnQuasiquote });
-	try fns.put("let", .{ .special = fnLet });
-
 	try fns.put("do", .{ .special = variables.fnDo });
 	try fns.put("let", .{ .special = variables.fnLet });
 	try fns.put("var", .{ .special = variables.fnVar });
 	try fns.put("set", .{ .special = variables.fnSet });
+	try fns.put("or", .{ .special = logic.fnOr });
+	try fns.put("nor", .{ .special = logic.fnNor });
+	try fns.put("and", .{ .special = logic.fnAnd });
 
 	var stdin_buffer: [4096]u8 = undefined;
 	var stdout_buffer: [4096]u8 = undefined;

@@ -102,8 +102,6 @@ Jade match and inject with the proper symbol provided.
 Include let, var and set!.
 *** TODO references.zig
 Where library inject with value and it will read ~(ref x)~.
-*** TODO logic.zig
-Logic math.
 *** TODO list.zig
 List, map and their counterpart, require references to work first.
 ** TODO Proper object-free
