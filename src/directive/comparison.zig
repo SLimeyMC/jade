@@ -71,14 +71,14 @@ pub fn fnEql(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) eval.
                     return eql(p[0], b.car(), allocatorr) and eql(p[1], b.cdr(), allocatorr);
 				},
 				.Symbol => |v| {
-                    const b_sym = b.asSymbol(allocatorr) catch return false;
+                    const b_sym = b.toSymbol(allocatorr) catch return false;
 					return std.mem.eql(u8, v, b_sym);
 				},
 				.Bool => |v| {
-					return v == b.asBool() catch return false;
+					return v == b.toBool() catch return false;
 				},
 				.Integer => |v| {
-					return v == b.asIntegerOrZero() catch return false;
+					return v == b.toIntegerOrZero() catch return false;
 				},
 				.Function => {
 					return a == b;
@@ -95,43 +95,37 @@ pub fn fnEql(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) eval.
 	return Expr.boolean(allocator, true);
 }
 
-// TODO: check type
 pub fn fnIs(
 	args: []const *Expr,
 	env: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	_ = env;
-	if (args.len == 0) return error.ArityError;
-	if (args.len == 1)
-		return Expr.boolean(allocator, true);
+	if (args.len == 1) return error.ArityError;
 
 	const first = args[0];
 
 	const eql = struct{
-		inline fn eql(a: *const Expr, b: *const Expr) bool {
+		inline fn eql(a: *const Expr, b: *const Expr, allocatorr: std.mem.Allocator) bool {
 			switch (a.*) {
-				.Nil => {
-					return b.* == .Nil;
-				},
-				.Bool => |v| {
-					return b.* == .Bool and v == b.Bool;
-				},
-				.Integer => |v| {
-					return b.* == .Integer and v == b.Integer;
-				},
 				.Symbol => |v| {
-					return b.* == .Symbol and
-						std.mem.eql(u8, v, b.Symbol);
+					switch (b.* ) {
+						.Nil => return std.mem.eql(u8, v, "nil"),
+						.Bool => return std.mem.eql(u8, v, "bool"),
+						.Integer => return std.mem.eql(u8, v, "int"),
+						.Symbol => return std.mem.eql(u8, v, "symbol"),
+						.Pair => return std.mem.eql(u8, v, "pair"),
+						.Function => {
+							// TODO: Compare signature
+                            return false;
+						},
+					}
 				},
 				.Pair => |p| {
-					return b.* == .Pair and
-						(eql(p[0], b.car())) and
-						(eql(p[1], b.cdr()));
+					if (b.* != .Pair) return false;
+					return eql(p[0], b.car(), allocatorr) and eql(p[1], b.cdr(), allocatorr);
 				},
-				.Function => {
-					return false;
-				},
+				else => return error.TypeError,
 			}
 		}
 	}.eql;
@@ -179,9 +173,9 @@ inline fn compare(
 ) !bool {
 	if (args.len < 2)
 		return true;
-	var prev = try args[0].asInteger();
+	var prev = try args[0].toInteger();
 	for (args[1..]) |arg| {
-		const curr = try arg.asInteger();
+		const curr = try arg.toInteger();
 		if (!f(prev, curr))
 			return false;
 		prev = curr;

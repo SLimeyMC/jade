@@ -1,7 +1,8 @@
 const std = @import("std");
 const Env = @import("env.zig").Env;
+const EvalError = @import("eval.zig").EvalError;
 
-const LispReader = error {
+pub const ReaderError = error {
 UnexpectedRParen,
 UnexpectedEOF,
 UnexpectedEndOfStream,
@@ -16,6 +17,8 @@ pub const Function = struct {
 };
 
 pub const Expr = union(enum) {
+	const OOM = error {OutOfMemory};
+
 	Nil,
 	Symbol: []const u8,
 	Pair: [2]*Expr,
@@ -26,7 +29,7 @@ pub const Expr = union(enum) {
 	pub fn car(self: *Expr) *Expr { return self.Pair[0]; }
 	pub fn cdr(self: *Expr) *Expr { return self.Pair[1]; }
 
-	pub fn asInteger(self: *Expr) !i32 {
+	pub fn toInteger(self: *Expr) EvalError!i32 {
 		return switch (self.*) {
 			.Nil => return error.NilError,
 			.Symbol => |s| std.fmt.parseInt(i32, s, 10) catch return error.TypeError,
@@ -36,7 +39,7 @@ pub const Expr = union(enum) {
 		};
 	}
 
-	pub fn asIntegerOrZero(self: *Expr) !i32 {
+	pub fn toIntegerOrZero(self: *Expr) EvalError!i32 {
 		return switch (self.*) {
 			.Nil => 0,
 			.Symbol => |s| std.fmt.parseInt(i32, s, 10) catch return error.TypeError,
@@ -46,7 +49,7 @@ pub const Expr = union(enum) {
 		};
 	}
 
-	pub fn asBool(self: *Expr) !bool {
+	pub fn toBool(self: *Expr) EvalError!bool {
 		return switch (self.*) {
 			.Nil => return false,
 			.Symbol => |s| if (std.mem.eql(u8, s, "t")) true else return error.TypeError,
@@ -63,7 +66,7 @@ pub const Expr = union(enum) {
 		};
 	}
 
-	pub fn asSymbol(self: *Expr, allocator: std.mem.Allocator) ![]const u8 {
+	pub fn toSymbol(self: *Expr, allocator: std.mem.Allocator) EvalError![]const u8 {
 		 switch (self.*) {
 			.Nil => return error.NilError,
 			.Symbol => |v| return v,
@@ -79,31 +82,31 @@ pub const Expr = union(enum) {
 		}
 	}
 
-	pub fn nil(allocator: std.mem.Allocator) !*Expr {
+	pub fn nil(allocator: std.mem.Allocator) OOM!*Expr {
 		const e = try allocator.create(Expr);
 		e.* = .Nil;
 		return e;
 	}
 
-	pub fn symbol(allocator: std.mem.Allocator, name: []const u8) !*Expr {
+	pub fn symbol(allocator: std.mem.Allocator, name: []const u8) OOM!*Expr {
 		const e = try allocator.create(Expr);
 		e.* = .{ .Symbol = name };
 		return e;
 	}
 
-	pub fn pair(allocator: std.mem.Allocator, a: *Expr, b: *Expr) !*Expr {
+	pub fn pair(allocator: std.mem.Allocator, a: *Expr, b: *Expr) OOM!*Expr {
 		const e = try allocator.create(Expr);
 		e.* = .{ .Pair = .{ a, b } };
 		return e;
 	}
 
-	pub fn integer(allocator: std.mem.Allocator, int: i32) !*Expr {
+	pub fn integer(allocator: std.mem.Allocator, int: i32) OOM!*Expr {
 		const e = try allocator.create(Expr);
 		e.* = .{ .Integer = int };
 		return e;
 	}
 
-	pub fn boolean(allocator: std.mem.Allocator, b: bool) !*Expr {
+	pub fn boolean(allocator: std.mem.Allocator, b: bool) OOM!*Expr {
 		const e = try allocator.create(Expr);
 		e.* = .{ .Bool = b };
 		return e;
@@ -112,15 +115,13 @@ pub const Expr = union(enum) {
 	pub fn function(
 		allocator: std.mem.Allocator,
 		f: Function,
-	) !*Expr {
+	) OOM!*Expr {
 		const e = try allocator.create(Expr);
-		e.* = .{
-			.Function = f,
-		};
+		e.* = .{ .Function = f };
 		return e;
 	}
 
-	pub fn clone(allocator: std.mem.Allocator, copy: *const Expr) !*Expr {
+	pub fn clone(allocator: std.mem.Allocator, copy: *const Expr) OOM!*Expr {
 		const e = try allocator.create(Expr);
 		e.* = copy.*;
 		return e;
@@ -150,7 +151,7 @@ fn isDelimiter(c: u8) bool {
 		or c == '|';
 }
 
-pub fn tokenize(allocator: std.mem.Allocator, src: []const u8) ![]Token {
+pub fn tokenize(allocator: std.mem.Allocator, src: []const u8) ReaderError![]Token {
 	var tokens = try std.ArrayList(Token).initCapacity(allocator, 512) ;
 	var i: usize = 0;
 
@@ -172,13 +173,13 @@ pub fn tokenize(allocator: std.mem.Allocator, src: []const u8) ![]Token {
 	return tokens.toOwnedSlice(allocator);
 }
 
-fn readSymbol(allocator: std.mem.Allocator, src: []const u8, i: *usize) ![]const u8 {
+fn readSymbol(allocator: std.mem.Allocator, src: []const u8, i: *usize) ReaderError![]const u8 {
 	const start = i.*;
 	while (i.* < src.len and !isDelimiter(src[i.*])) i.* += 1;
 	return allocator.dupe(u8, src[start..i.*]);
 }
 
-fn readPipeSymbol(allocator: std.mem.Allocator, src: []const u8, i: *usize) ![]const u8 {
+fn readPipeSymbol(allocator: std.mem.Allocator, src: []const u8, i: *usize) ReaderError![]const u8 {
 	i.* += 1;
 	var buf = try std.ArrayList(u8).initCapacity(allocator, 512);
 
@@ -197,12 +198,12 @@ fn readPipeSymbol(allocator: std.mem.Allocator, src: []const u8, i: *usize) ![]c
 	return error.UnterminatedSymbol;
 }
 
-pub fn parse(allocator: std.mem.Allocator, tokens: []Token, mode: ReaderMode) !*Expr {
+pub fn parse(allocator: std.mem.Allocator, tokens: []Token, mode: ReaderMode) ReaderError!*Expr {
 	var i: usize = 0;
 	return parseExpr(allocator, tokens, &i, mode);
 }
 
-pub fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize, mode: ReaderMode) LispReader!*Expr {
+pub fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize, mode: ReaderMode) ReaderError!*Expr {
 	while (i.* < tokens.len) {
 		const tok = tokens[i.*];
 		i.* += 1;
@@ -222,7 +223,7 @@ pub fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize, mode:
 	return error.UnexpectedEOF;
 }
 
-fn parseList(allocator: std.mem.Allocator, tokens: []Token, i: *usize, mode: ReaderMode) LispReader!*Expr {
+fn parseList(allocator: std.mem.Allocator, tokens: []Token, i: *usize, mode: ReaderMode) ReaderError!*Expr {
 	if (i.* >= tokens.len) return error.UnexpectedEOF;
 	if (tokens[i.*] == .RParen) { i.* += 1; return Expr.nil(allocator); }
 
@@ -231,7 +232,7 @@ fn parseList(allocator: std.mem.Allocator, tokens: []Token, i: *usize, mode: Rea
 	return try Expr.pair(allocator, head, tail);
 }
 
-fn makeUnary(allocator: std.mem.Allocator, name: []const u8, tokens: []Token, i: *usize, mode: ReaderMode) LispReader!*Expr {
+fn makeUnary(allocator: std.mem.Allocator, name: []const u8, tokens: []Token, i: *usize, mode: ReaderMode) ReaderError!*Expr {
 	const inner = try parseExpr(allocator, tokens, i, mode);
 	return try Expr.pair(
 		allocator,

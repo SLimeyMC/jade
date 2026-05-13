@@ -34,7 +34,7 @@ pub fn fnSub(
 	if (args.len == 0) return error.ArityError;
 	const acc = try foldInt(
 		args[1..],
-		try args[0].asIntegerOrZero(),
+		try args[0].toIntegerOrZero(),
 		struct {
 			inline fn f(a: i32, b: i32) EvalError!i32 {
 				return a - b;
@@ -59,6 +59,8 @@ pub fn fnMul(
 			}
 		}.f,
 	);
+	for (args) |arg|
+		try allocator.free(arg);
 	return Expr.integer(allocator, acc);
 }
 
@@ -72,7 +74,7 @@ pub fn fnDiv(
 		return error.ArityError;
 	const acc = try foldInt(
 		args[1..],
-		try args[0].asIntegerOrZero(),
+		try args[0].toIntegerOrZero(),
 		struct {
 			inline fn f(a: i32, b: i32) EvalError!i32 {
 				if (b == 0) return error.DivisionByZero;
@@ -90,7 +92,7 @@ inline fn foldInt(
 ) EvalError!i32 {
 	var acc = init;
 	for (args) |arg| {
-		acc = try f(acc, try arg.asIntegerOrZero());
+		acc = try f(acc, try arg.toIntegerOrZero());
 	}
 	return acc;
 }
