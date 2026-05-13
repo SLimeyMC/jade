@@ -4,7 +4,6 @@ const eval = @import("../eval.zig");
 const Env = @import("../env.zig");
 const Expr = reader.Expr;
 const FnTable = eval.FnTable;
-const Fn = eval.Fn;
 const EvalError = eval.EvalError;
 
 pub fn fnWhen(

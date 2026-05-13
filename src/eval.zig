@@ -15,7 +15,7 @@ NotAList,
 OutOfMemory,
 };
 
-pub const Fn = union(enum) {
+const Fn = union(enum) {
     eager: *const fn (args: []const *Expr, env: *Env, allocator: std.mem.Allocator) EvalError!*Expr,
     macro: *const fn (args: []const *Expr, env: *Env, fns: *FnTable, allocator: std.mem.Allocator) EvalError!*Expr,
     special: *const fn (args: []const *Expr, env: *Env, fns: *FnTable, allocator: std.mem.Allocator) EvalError!*Expr,
