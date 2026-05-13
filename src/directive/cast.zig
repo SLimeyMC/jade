@@ -14,7 +14,7 @@ pub fn fnInt(
 ) EvalError!*Expr {
 	if (args.len != 1) return error.ArityError;
 	const i = try args[0].toInteger();
-	try allocator.free(args[0]);
+	try allocator.destroy(args[0]);
 	return Expr.integer(allocator, i);
 }
 
@@ -25,7 +25,7 @@ pub fn fnIntOrZero(
 ) EvalError!*Expr {
 	if (args.len != 1) return error.ArityError;
 	const i = try args[0].toIntegerOrZero();
-	try allocator.free(args[0]);
+	allocator.destroy(args[0]);
 	return Expr.integer(allocator, i);
 }
 
@@ -36,6 +36,6 @@ pub fn fnBool(
 ) EvalError!*Expr {
 	if (args.len != 1) return error.ArityError;
 	const b = try args[0].toBool();
-	try allocator.free(args[0]);
+	allocator.destroy(args[0]);
 	return Expr.bool(allocator, b);
 }

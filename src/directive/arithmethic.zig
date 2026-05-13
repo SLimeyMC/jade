@@ -22,6 +22,7 @@ pub fn fnAdd(
 			}
 		}.f,
 	);
+	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 
@@ -41,6 +42,7 @@ pub fn fnSub(
 			}
 		}.f,
 	);
+	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 
@@ -59,8 +61,7 @@ pub fn fnMul(
 			}
 		}.f,
 	);
-	for (args) |arg|
-		allocator.destroy(arg);
+	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 
@@ -82,6 +83,7 @@ pub fn fnDiv(
 			}
 		}.f,
 	);
+	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 

@@ -53,6 +53,8 @@ pub fn fnStrictEql(
 		}
 	}
 
+	for (args) |arg|
+		allocator.destroy(arg);
 	return Expr.boolean(allocator, true);
 }
 

@@ -41,6 +41,7 @@ pub fn fnWhen(
 		}
 	}
 
+	for (args) |arg| allocator.destroy(arg);
 	return Expr.nil(allocator);
 }
 
