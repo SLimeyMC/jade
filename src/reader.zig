@@ -18,7 +18,6 @@ pub const Function = struct {
 
 pub const Expr = union(enum) {
 	const OOM = error {OutOfMemory};
-
 	Nil,
 	Symbol: []const u8,
 	Pair: [2]*Expr,
