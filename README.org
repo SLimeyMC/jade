@@ -98,8 +98,6 @@ Jade match and inject with the proper symbol provided.
 
 * TODO Jade languange
 ** TODO Directive
-*** TODO cast.zig
-Will have type casting, including strict, value, and default.
 *** TODO variable.zig
 Include let, var and set!.
 *** TODO references.zig
