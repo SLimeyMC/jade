@@ -1,11 +1,10 @@
 const std = @import("std");
-const reader = @import("reader.zig");
-const eval = @import("eval.zig");
-const Env = @import("env.zig");
+const jade = @import("jade");
+const reader = jade.reader;
+const Env = jade.Env;
 const Expr = reader.Expr;
-const FnTable = eval.FnTable;
-const Fn = eval.Fn;
-const directive = @import("directive.zig");
+const FnTable = jade.FnTable;
+const directive = jade.directive;
 
 pub fn main(init: std.process.Init) !void {
 	const allocator = init.gpa;
@@ -57,7 +56,7 @@ pub fn main(init: std.process.Init) !void {
 				try flushLn(stdout);
 				break;
 			};
-			const result = eval.eval(expr, &env, &fns, a) catch |err| {
+			const result = jade.eval(expr, &env, &fns, a) catch |err| {
 				try stdout.print("eval error: {}", .{err});
 				try flushLn(stdout);
 				break;

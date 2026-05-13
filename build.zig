@@ -4,12 +4,21 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+	const jade_lang = b.addModule("jade", .{
+		.target = target,
+		.optimize = optimize,
+		.root_source_file = b.path("src/jade-lang.zig"),
+	});
+
     const exe = b.addExecutable(.{
 		.name = "jade",
 		.root_module = b.createModule(.{
             .root_source_file = b.path("src/repl.zig"),
             .target = target,
 			.optimize = optimize,
+			.imports = &.{
+				.{ .name = "jade", .module = jade_lang }
+			}
 		}),
 	});
 
