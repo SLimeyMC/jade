@@ -16,13 +16,8 @@ pub fn fnWhen(
 	for (args) |clause| {
 		if (clause.* != .Pair)
 			return error.TypeError;
-
 		const condition = clause.car();
 		const expr = clause.cdr().car();
-
-		if (condition.* == .Symbol and std.mem.eql(u8, condition.Symbol, "else")) {
-			return eval.eval(expr, env, fns, allocator);
-		}
 
 		const result = try eval.eval(
 			condition,
@@ -30,7 +25,6 @@ pub fn fnWhen(
 			fns,
 			allocator,
 		);
-
 		if (try result.toBool()) {
 			return eval.eval(
 				expr,
