@@ -5,12 +5,7 @@ const Env = @import("env.zig");
 const Expr = reader.Expr;
 const FnTable = eval.FnTable;
 const Fn = eval.Fn;
-const arithmethic = @import("directive/arithmethic.zig");
-const comparison = @import("directive/comparison.zig");
-const conditional = @import("directive/conditional.zig");
-const quote = @import("directive/quote.zig");
-const variables = @import("directive/variables.zig");
-const logic = @import("directive/logic.zig");
+const directive = @import("directive.zig");
 
 pub fn main(init: std.process.Init) !void {
 	const allocator = init.gpa;
@@ -22,26 +17,7 @@ pub fn main(init: std.process.Init) !void {
 	var env = Env.init(a, null);
 	var fns = FnTable.init(a);
 
-	try fns.put("+", .{ .eager = arithmethic.fnAdd });
-	try fns.put("-", .{ .eager = arithmethic.fnSub });
-	try fns.put("*", .{ .eager = arithmethic.fnMul });
-	try fns.put("/", .{ .eager = arithmethic.fnDiv });
-	try fns.put("=", .{ .eager = comparison.fnEql });
-	try fns.put("=?", .{ .eager = comparison.fnStrictEql });
-	try fns.put(">", .{ .eager = comparison.fnLt });
-	try fns.put(">=", .{ .eager = comparison.fnLte });
-	try fns.put("<", .{ .eager = comparison.fnGt });
-	try fns.put("<=", .{ .eager = comparison.fnGte });
-	try fns.put("cond", .{ .special = conditional.fnWhen });
-	try fns.put("quote", .{ .special = quote.fnQuote });
-	try fns.put("quasiquote", .{ .special = quote.fnQuasiquote });
-	try fns.put("do", .{ .special = variables.fnDo });
-	try fns.put("let", .{ .special = variables.fnLet });
-	try fns.put("var", .{ .special = variables.fnVar });
-	try fns.put("set", .{ .special = variables.fnSet });
-	try fns.put("or", .{ .special = logic.fnOr });
-	try fns.put("nor", .{ .special = logic.fnNor });
-	try fns.put("and", .{ .special = logic.fnAnd });
+	try directive.init(&fns);
 
 	var stdin_buffer: [4096]u8 = undefined;
 	var stdout_buffer: [4096]u8 = undefined;
