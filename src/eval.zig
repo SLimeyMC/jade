@@ -32,11 +32,11 @@ pub fn eval(expr: *Expr, env: *Env, fns: *FnTable, allocator: std.mem.Allocator)
 			}
 			return expr;
 		},
-		.Pair => evalForm(expr, env, fns, allocator),
+		.Pair => evalPair(expr, env, fns, allocator),
 	};
 }
 
-fn evalForm(expr: *Expr, env: *Env, fns: *FnTable, allocator: std.mem.Allocator) EvalError!*Expr {
+fn evalPair(expr: *Expr, env: *Env, fns: *FnTable, allocator: std.mem.Allocator) EvalError!*Expr {
 	const head = expr.car();
 	const rest = expr.cdr();
 
