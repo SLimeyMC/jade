@@ -27,7 +27,7 @@ pub fn eval(expr: *Expr, env: *Env, fns: *FnTable, allocator: std.mem.Allocator)
 	return switch (expr.*) {
 		.Nil, .Integer, .Bool, .Function => expr,
 		.Symbol => |s| {
-			if (env.getExpr(allocator, s)) |b| {
+			if (env.getExpr(s, allocator)) |b| {
 				return b;
 			}
 			return expr;

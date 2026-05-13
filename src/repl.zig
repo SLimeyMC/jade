@@ -22,7 +22,7 @@ fn fnLet(
 		else => return error.TypeError,
 	};
 	const value = try eval.eval(args[1], env, fns, allocator);
-	try env.def(name, value.*, true);
+	try env.def(name, .{.value = value.*, .mutable = false});
 	return Expr.nil(allocator);
 }
 
@@ -33,7 +33,7 @@ pub fn main(init: std.process.Init) !void {
 	defer arena.deinit();
 	const a = arena.allocator();
 
-	var env = Env.init(a);
+	var env = Env.init(a, null);
 	var fns = FnTable.init(a);
 
 	try fns.put("+", .{ .eager = arithmethic.fnAdd });

@@ -7,29 +7,75 @@ const Binding = struct {
 	mutable: bool,
 };
 
+parent: ?*Env,
 map: std.StringHashMap(Binding),
-allocator: std.mem.Allocator,
 
-pub fn init(allocator: std.mem.Allocator) Env {
-	return .{ .map = std.StringHashMap(Binding).init(allocator), .allocator = allocator };
+pub fn init(allocator: std.mem.Allocator, parent: ?*Env) Env {
+	return .{ .parent = parent, .map = std.StringHashMap(Binding).init(allocator), };
 }
 
-pub fn def(self: *Env, name: []const u8, value: Expr, mutable: bool) !void {
-	try self.map.put(name, .{ .value = value, .mutable = mutable });
+pub fn deinit(self: *Env) void {
+	self.map.deinit();
+}
+
+pub fn push(self: *Env, allocator: std.mem.Allocator) !*Env {
+	const env = try allocator.create(Env);
+	env.* = Env.init(allocator, self);
+	return env;
+}
+
+pub fn pop(self: *Env, allocator: std.mem.Allocator) ?*Env {
+	const parent = self.parent;
+	self.deinit();
+	allocator.destroy(self);
+	return parent;
+}
+
+pub fn def(self: *Env, name: []const u8, bind: Binding) !void {
+	try self.map.put(name, bind);
 }
 
 pub fn get(self: *Env, name: []const u8) ?Binding {
-	return self.map.get(name);
+	var env: ?*Env = self;
+	while (env) |e| {
+		if (e.map.get(name)) |binding|
+			return binding;
+		env = e.parent;
+	}
+	return null;
 }
 
-pub fn getExpr(self: *Env, allocator: std.mem.Allocator, name: []const u8) ?*Expr {
-	return if (get(self, name)) |b|
+pub fn getPtr(self: *Env, name: []const u8) ?*Binding {
+	var env: ?*Env = self;
+	while (env) |e| {
+		if (e.map.getPtr(name)) |binding|
+			return binding;
+		env = e.parent;
+	}
+	return null;
+}
+
+pub fn getExpr(
+	self: *Env,
+	name: []const u8,
+	allocator: std.mem.Allocator,
+) ?*Expr {
+	return if (self.get(name)) |b|
 		Expr.clone(allocator, &b.value) catch null
-	else null;
+	else
+		null;
 }
 
-pub fn set(self: *Env, name: []const u8, value: Expr) !void {
-	const entry = self.map.getPtr(name) orelse return error.UnboundSymbol;
-	if (!entry.mutable) return error.ImmutableBinding;
-	entry.value = value;
+pub fn set(
+	self: *Env,
+	name: []const u8,
+	value: Expr,
+) !void {
+	const binding = self.getPtr(name)
+		orelse return error.UnboundSymbol;
+
+	if (!binding.mutable)
+		return error.ImmutableBinding;
+
+	binding.value = value;
 }
