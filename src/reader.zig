@@ -1,6 +1,8 @@
 const std = @import("std");
 const Env = @import("env.zig");
 const EvalError = @import("eval.zig").EvalError;
+const Lexer = @import("reader/lexer.zig");
+const Token = Lexer.Token;
 
 const Error = error {
 UnexpectedRParen,
@@ -128,71 +130,21 @@ pub const Expr = union(enum) {
 	}
 };
 
-const Token = union(enum) {
-	LParen,
-	RParen,
-	Quote,
-	Backtick,
-	Comma,
-	DoubleQuote,
-	Newline,
-	Symbol: []const u8,
-};
+pub const ReaderOptions = struct {
+	const ParseOptions = struct {
+		dollar_symbol: bool = true,
+		colon_symbol: bool = true,
+		hash_symbol: bool = true,
+		at_symbol: bool = true,
+	};
 
-const ReaderOptions = struct {
 	preserve_newlines: bool = false,
+	parse: ParseOptions = .{}
 };
 
 pub fn read(allocator: std.mem.Allocator, reader: std.Io.Reader, options: ReaderOptions) Error![]Token {
-	const token = try tokenize(allocator, reader.buffered(), options);
+	const token = try Lexer.tokenize(allocator, reader.buffered(), options);
 	parse(allocator, token, options);
-}
-
-pub fn tokenize(allocator: std.mem.Allocator, src: []const u8, _: ReaderOptions) Error![]Token {
-	var tokens = try std.ArrayList(Token).initCapacity(allocator, 512) ;
-	var i: usize = 0;
-
-	while (i < src.len) {
-		switch (src[i]) {
-			' ', '\t', '\r' => i += 1,
-			'\n' => { try tokens.append(allocator, .Newline); i += 1; },
-			'(' => { try tokens.append(allocator, .LParen); i += 1; },
-			')' => { try tokens.append(allocator, .RParen); i += 1; },
-			'\'' => { try tokens.append(allocator, .Quote); i += 1; },
-			'`' => { try tokens.append(allocator, .Backtick); i += 1; },
-			',' => { try tokens.append(allocator, .Comma); i += 1; },
-			'"' => { try tokens.append(allocator, .DoubleQuote); i += 1; },
-			'|' => try tokens.append(allocator, .{ .Symbol = try readPipeSymbol(allocator, src, &i) }),
-			else => try tokens.append(allocator, .{ .Symbol = try readSymbol(allocator, src, &i) }),
-		}
-	}
-
-	return tokens.toOwnedSlice(allocator);
-}
-
-fn readSymbol(allocator: std.mem.Allocator, src: []const u8, i: *usize) Error![]const u8 {
-	const start = i.*;
-	while (i.* < src.len and !isDelimiter(src[i.*])) i.* += 1;
-	return allocator.dupe(u8, src[start..i.*]);
-}
-
-fn readPipeSymbol(allocator: std.mem.Allocator, src: []const u8, i: *usize) Error![]const u8 {
-	i.* += 1;
-	var buf = try std.ArrayList(u8).initCapacity(allocator, 512);
-
-	while (i.* < src.len) : (i.* += 1) {
-		switch (src[i.*]) {
-			'|'  => { i.* += 1; return buf.toOwnedSlice(allocator); },
-			'\\' => {
-				i.* += 1;
-				if (i.* >= src.len) return error.UnterminatedSymbol;
-				try buf.append(allocator, src[i.*]);
-			},
-			else => try buf.append(allocator, src[i.*]),
-		}
-	}
-
-	return error.UnterminatedSymbol;
 }
 
 fn isDelimiter(c: u8) bool {
@@ -214,13 +166,13 @@ pub fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize, optio
 		i.* += 1;
 
 		return switch (tok) {
-			.Newline => if (options.preserve_newlines) Expr.symbol(allocator, "newline" ) else continue,
+			.Newline => Expr.symbol(allocator, "newline" ),
 			.Symbol => |s| Expr.symbol(allocator, s ),
-			.LParen => parseList(allocator, tokens, i, mode),
-			.Quote => makeUnary(allocator, "quote", tokens, i, mode),
-			.Backtick => makeUnary(allocator, "quasiquote", tokens, i, mode),
-			.Comma => makeUnary(allocator, "unquote", tokens, i, mode),
-			.DoubleQuote => makeUnary(allocator, "doublequote", tokens, i, mode),
+			.LParen => parseList(allocator, tokens, i, options),
+			.Quote => makeUnary(allocator, "quote", tokens, i, options),
+			.Backtick => makeUnary(allocator, "quasiquote", tokens, i, options),
+			.Comma => makeUnary(allocator, "unquote", tokens, i, options),
+			.DoubleQuote => makeUnary(allocator, "doublequote", tokens, i, options),
 			.RParen => error.UnexpectedRParen,
 		};
 	}

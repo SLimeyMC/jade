@@ -42,31 +42,31 @@ pub fn main(init: std.process.Init) !void {
 			continue;
 		}
 
-		const tokens = reader.tokenize(a, trimmed) catch |err| {
-			try stdout.print("tokenize error: {}\n", .{err});
-			try stdout.writeAll("jade> ");
-			try stdout.flush();
-			continue;
-		};
-
-		var i: usize = 0;
-		while (i < tokens.len) {
-			const expr = reader.parseExpr(a, tokens, &i, .{}) catch |err| {
-				try stdout.print("parse error: {}", .{err});
-				try flushLn(stdout);
-				break;
-			};
-			const result = jade.eval(expr, &env, &fns, a) catch |err| {
-				try stdout.print("eval error: {}", .{err});
-				try flushLn(stdout);
-				break;
-			};
-			if (result.* != .Nil) {
-				try stdout.writeAll("  ~~> ");
-				try printExpr(result, stdout);
-				try flushLn(stdout);
-			}
-		}
+		// const tokens = reader.tokenize(a, trimmed) catch |err| {
+		// 	try stdout.print("tokenize error: {}\n", .{err});
+		// 	try stdout.writeAll("jade> ");
+		// 	try stdout.flush();
+		// 	continue;
+		// };
+  //
+		// var i: usize = 0;
+		// while (i < tokens.len) {
+		// 	const expr = reader.parseExpr(a, tokens, &i, .{}) catch |err| {
+		// 		try stdout.print("parse error: {}", .{err});
+		// 		try flushLn(stdout);
+		// 		break;
+		// 	};
+		// 	const result = jade.eval(expr, &env, &fns, a) catch |err| {
+		// 		try stdout.print("eval error: {}", .{err});
+		// 		try flushLn(stdout);
+		// 		break;
+		// 	};
+		// 	if (result.* != .Nil) {
+		// 		try stdout.writeAll("  ~~> ");
+		// 		try printExpr(result, stdout);
+		// 		try flushLn(stdout);
+		// 	}
+		// }
 
 		try stdout.writeAll("jade> ");
 		try stdout.flush();
