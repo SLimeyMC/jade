@@ -5,6 +5,7 @@ const Env = jade.Env;
 const Expr = reader.Expr;
 const FnTable = jade.FnTable;
 const directive = jade.directive;
+const Lexer = jade.Lexer;
 
 pub fn main(init: std.process.Init) !void {
 	const allocator = init.gpa;
@@ -32,53 +33,30 @@ pub fn main(init: std.process.Init) !void {
 
 	try stdout.flush();
 
-	// TODO: multi-line expr
+	var lexer = try Lexer.init(
+		allocator,
+		stdin,
+		.{},
+	);
+	defer lexer.deinit();
+
 	// TODO: simple highlighting
-	while (stdin.takeDelimiter('\n')) |line| {
-		const trimmed = std.mem.trim(u8, line.?, &std.ascii.whitespace);
-		if (trimmed.len == 0) {
-			try stdout.writeAll("jade> ");
-			try stdout.flush();
-			continue;
+	while (true) {
+		try lexer.next();
+
+		if (lexer.paren_depth == 0) {
+			const token = try lexer.tokens.toOwnedSlice(allocator);
+			const expr = try reader.parse(allocator, token, .{});
+			const result = try jade.eval(expr, &env, &fns, allocator);
+			try stdout.writeAll("   ~> ");
+			try printExpr(result, stdout);
+			try stdout.writeAll("\njade> ");
+		} else {
+			try stdout.writeAll("    > ");
+			for (0..lexer.paren_depth) |_|
+			try stdout.writeByte(' ');
 		}
-
-		// const tokens = reader.tokenize(a, trimmed) catch |err| {
-		// 	try stdout.print("tokenize error: {}\n", .{err});
-		// 	try stdout.writeAll("jade> ");
-		// 	try stdout.flush();
-		// 	continue;
-		// };
-  //
-		// var i: usize = 0;
-		// while (i < tokens.len) {
-		// 	const expr = reader.parseExpr(a, tokens, &i, .{}) catch |err| {
-		// 		try stdout.print("parse error: {}", .{err});
-		// 		try flushLn(stdout);
-		// 		break;
-		// 	};
-		// 	const result = jade.eval(expr, &env, &fns, a) catch |err| {
-		// 		try stdout.print("eval error: {}", .{err});
-		// 		try flushLn(stdout);
-		// 		break;
-		// 	};
-		// 	if (result.* != .Nil) {
-		// 		try stdout.writeAll("  ~~> ");
-		// 		try printExpr(result, stdout);
-		// 		try flushLn(stdout);
-		// 	}
-		// }
-
-		try stdout.writeAll("jade> ");
 		try stdout.flush();
-	} else |err| switch (err) {
-		error.StreamTooLong => {
-			// the line was longer than the internal buffer
-            return err;
-		},
-		error.ReadFailed => {
-			// the read failed
-            return err;
-		},
 	}
 }
 

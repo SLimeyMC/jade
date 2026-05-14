@@ -3,12 +3,11 @@ const std = @import("std");
 const ReaderOptions = @import("../reader.zig").ReaderOptions;
 
 const Error = error {
+UnexpectedPop,
 UnexpectedRParen,
 UnexpectedEOF,
-UnexpectedEndOfStream,
 UnterminatedSymbol,
-OutOfMemory,
-};
+} || std.mem.Allocator.Error || std.Io.Reader.Error;
 
 pub const Token = union(enum) {
 	LParen,
@@ -25,9 +24,55 @@ pub const Token = union(enum) {
 	Symbol: []const u8,
 };
 
-allocator: std.mem.Allocator,
-reader: std.Io.Reader,
+const Consumer = struct {
+	ptr: *anyopaque,
+	consume: *const fn (
+		*anyopaque,
+		*Lexer,
+		u8,
+	) Error!void,
+	deinit: *const fn (
+		*anyopaque,
+		std.mem.Allocator,
+	) void,
+};
+
+gpa: std.mem.Allocator,
+reader: *std.Io.Reader,
+options: ReaderOptions,
 tokens: std.ArrayList(Token),
+consumers: std.ArrayList(Consumer),
+
+paren_depth: usize = 0,
+
+pub fn init(
+	allocator: std.mem.Allocator,
+	reader: *std.Io.Reader,
+	options: ReaderOptions,
+) Error!Lexer {
+	var lexer = Lexer{
+		.gpa = allocator,
+		.reader = reader,
+		.options = options,
+		.tokens = try std.ArrayList(Token).initCapacity(allocator, 64),
+		.consumers = try std.ArrayList(Consumer).initCapacity(allocator, 64),
+	};
+	try lexer.pushConsumer(NormalConsumer, .{});
+	return lexer;
+}
+
+pub fn deinit(self: *Lexer) void {
+	for (self.tokens.items) |token| {
+		switch (token) {
+			.Symbol => |s| self.gpa.free(s),
+			else => {},
+		}
+	}
+	self.tokens.deinit(self.gpa);
+	for (self.consumers.items) |consumer|
+		consumer.deinit(consumer.ptr, self.gpa);
+	self.consumers.deinit(self.gpa);
+}
 
 fn peek(self: *Lexer) !u8 {
 	return try self.reader.peekByte();
@@ -38,7 +83,7 @@ fn take(self: *Lexer) !u8 {
 }
 
 fn push(self: *Lexer, token: Token) !void {
-	try self.tokens.append(self.allocator, token);
+	try self.tokens.append(self.gpa, token);
 }
 
 fn takePush(self: *Lexer, token: Token) !void {
@@ -46,80 +91,48 @@ fn takePush(self: *Lexer, token: Token) !void {
 	try self.push(token);
 }
 
-inline fn scanPush(
+fn pushConsumer(
 	self: *Lexer,
-	comptime f: fn (std.mem.Allocator, *std.Io.Reader) Error!Token,
-) Error!void {
-	try self.push(try f(
-		self.allocator,
-		&self.reader,
-	));
+	comptime T: type,
+	value: T,
+) !void {
+	const ptr = try self.gpa.create(T);
+	ptr.* = value;
+
+	try self.consumers.append(self.gpa, .{
+		.ptr = ptr,
+		.consume = struct {
+			fn call(
+				p: *anyopaque,
+				lexer: *Lexer,
+				ch: u8,
+			) Error!void {
+				const self_consumer: *T =
+					@ptrCast(@alignCast(p));
+
+				try self_consumer.consume(
+					lexer,
+					ch,
+				);
+			}
+		}.call,
+		.deinit = struct {
+			fn call(
+				p: *anyopaque,
+				allocator: std.mem.Allocator,
+			) void {
+				const self_consumer: *T =
+					@ptrCast(@alignCast(p));
+
+				allocator.destroy(self_consumer);
+			}
+		}.call,
+	});
 }
 
-pub fn tokenize(allocator: std.mem.Allocator, reader: std.Io.Reader, _: ReaderOptions) Error![]Token {
-	var lex = Lexer{
-		.allocator = allocator,
-		.reader = reader,
-		.tokens = try std.ArrayList(Token).initCapacity(allocator, 512),
-	};
-
-	while (try lex.peek()) |ch| {
-		switch (ch) {
-			' ', '\t', '\r' => _ = try lex.take(),
-			'\n' => try lex.takePush(.Newline),
-			'(' => try lex.takePush(.LParen),
-			')' => try lex.takePush(.RParen),
-			'\'' => try lex.takePush(.Quote),
-			'`' => try lex.takePush(.Backtick),
-			',' => try lex.takePush(.Comma),
-			'"' => try lex.takePush(.DoubleQuote),
-			'|' => try lex.scanPush(readPipeSymbol),
-			else => try lex.scanPush(readSymbol),
-		}
-	}
-
-	return lex.tokens.toOwnedSlice(allocator);
-}
-
-fn readSymbol(
-	allocator: std.mem.Allocator,
-	reader: *std.Io.Reader,
-) Error!Token {
-	var buf = std.ArrayList(u8){};
-
-	while (try reader.peekByte()) |ch| {
-		if (isDelimiter(ch)) break;
-		try buf.append(
-			allocator,
-			(try reader.takeByte()).?,
-		);
-	}
-	return .{ .Symbol = try buf.toOwnedSlice(allocator) };
-}
-
-fn readPipeSymbol(
-	allocator: std.mem.Allocator,
-	reader: *std.Io.Reader,
-) Error!Token {
-	_ = try reader.takeByte();
-	var buf = std.ArrayList(u8){};
-	while (try reader.takeByte()) |ch| {
-		switch (ch) {
-			'\\' => {
-				const next = (try reader.takeByte()) orelse return error.UnterminatedSymbol;
-				switch (next) {
-					'|', '\\' => try buf.append(allocator, next),
-					else => {
-                        try buf.append(allocator, '\\');
-						try buf.append(allocator, next);
-					},
-				}
-			},
-			'|' => return .{ .Symbol = try buf.toOwnedSlice(allocator) },
-			else => try buf.append(allocator, ch),
-		}
-	}
-	return error.UnterminatedPipeSymbol;
+fn popConsumer(self: *Lexer) Error!void {
+	const pop = self.consumers.pop() orelse return error.UnexpectedPop;
+	pop.deinit(pop.ptr, self.gpa);
 }
 
 fn isDelimiter(ch: u8) bool {
@@ -131,3 +144,95 @@ fn isDelimiter(ch: u8) bool {
 		else => false,
 	};
 }
+
+pub fn next(self: *Lexer) Error!void {
+	while (true) {
+		const char = self.reader.peekByte() catch |err| switch (err) {
+			error.EndOfStream => break,
+			else => return err,
+		};
+
+		const top = self.consumers.getLastOrNull() orelse return error.ReadFailed;
+		try top.consume(top.ptr, self, char);
+		if (char == '\n') return;
+	}
+}
+
+const NormalConsumer = struct {
+	fn consume(_: *NormalConsumer, lexer: *Lexer, char: u8) Error!void {
+		switch (char) {
+			' ', '\t', '\r' => _ = try lexer.take(),
+			'\n' => {
+				_ = try lexer.reader.takeByte();
+				if (lexer.options.preserve_newlines) {
+					try lexer.push(.Newline);
+				}
+				return;
+			},
+			'(' => {
+				lexer.paren_depth += 1;
+				try lexer.takePush(.LParen);
+			},
+			')' =>
+			if (lexer.paren_depth > 0) {
+				lexer.paren_depth -= 1; try lexer.takePush(.RParen);
+			} else return error.UnexpectedRParen,
+			'\'' => try lexer.takePush(.Quote),
+			'`' => try lexer.takePush(.Backtick),
+			',' => try lexer.takePush(.Comma),
+			'|' => {
+				_ = try lexer.reader.takeByte();
+				try lexer.pushConsumer(PipeConsumer, .{
+					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 128)
+				});
+			},
+			else =>
+				try lexer.pushConsumer(SymbolConsumer, .{
+					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 128)
+				}),
+		}
+	}
+};
+
+const SymbolConsumer = struct {
+	current: std.ArrayList(u8),
+
+	fn consume(self: *SymbolConsumer, lexer: *Lexer, char: u8) Error!void {
+		if (isDelimiter(char)) {
+			try lexer.push(.{ .Symbol = try self.current.toOwnedSlice(lexer.gpa) });
+			try lexer.popConsumer();
+			return;
+		}
+		try self.current.append(lexer.gpa, char);
+		_ = try lexer.take();
+	}
+
+	fn deinit(self: *SymbolConsumer, gpa: std.mem.Allocator) void {
+		self.current.deinit(gpa);
+	}
+};
+
+const PipeConsumer = struct {
+	current: std.ArrayList(u8),
+	escaping: bool = false,
+
+	fn consume(self: *PipeConsumer, lexer: *Lexer, char: u8) Error!void {
+		switch (char) {
+			'\\' => if (self.escaping)
+				try self.current.appendSlice(lexer.gpa, "\\\\")
+			else { self.escaping = true; },
+			'|' => if (self.escaping) try self.current.append(lexer.gpa, '|') else {
+				try lexer.push(.{ .Symbol = try self.current.toOwnedSlice(lexer.gpa) });
+				try lexer.popConsumer();
+			},
+			else => if (self.escaping)
+				try self.current.appendSlice(lexer.gpa, &[_]u8{'\\', char})
+			else try self.current.append(lexer.gpa,char,),
+		}
+		_ = try lexer.take();
+	}
+
+	fn deinit(self: *PipeConsumer, gpa: std.mem.Allocator) void {
+		self.current.deinit(gpa);
+	}
+};
