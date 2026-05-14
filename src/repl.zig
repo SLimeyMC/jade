@@ -41,6 +41,7 @@ pub fn main(init: std.process.Init) !void {
 	defer lexer.deinit();
 
 	// TODO: simple highlighting
+	// FIXME: many many memory leak
 	while (true) {
 		try lexer.next();
 
