@@ -50,7 +50,7 @@ pub fn main(init: std.process.Init) !void {
 			const expr = try reader.parse(allocator, token);
 			const result = try jade.eval(expr, &env, &fns, allocator);
 			try stdout.writeAll("   ~> ");
-			try printExpr(result, stdout);
+			try Expr.format(result, stdout);
 			try stdout.writeAll("\njade> ");
 		} else {
 			try stdout.writeAll("    > ");
@@ -58,34 +58,6 @@ pub fn main(init: std.process.Init) !void {
 			try stdout.writeByte(' ');
 		}
 		try stdout.flush();
-	}
-}
-
-fn printExpr(expr: *Expr, writer: *std.Io.Writer) !void {
-	switch (expr.*) {
-		.Nil => try writer.writeAll("()"),
-		.Symbol => |s| try writer.writeAll(s),
-		.Pair => {
-			try writer.writeByte('(');
-			var node = expr.*;
-			var first = true;
-			while (node == .Pair) : (node = node.Pair[1].*) {
-				if (!first) try writer.writeByte(' ');
-				try printExpr(node.Pair[0], writer);
-				first = false;
-			}
-			if (node != .Nil) {
-				try writer.writeAll(" . ");
-				try printExpr(&node, writer);
-			}
-			try writer.writeByte(')');
-		},
-		.Integer => |i| try writer.print("{d}", .{i}),
-		.Bool => |b| try if (b) writer.writeAll("t") else writer.writeAll("nil"),
-		.Function => |f| {
-			try writer.print("(lambda ({any})\n", .{f.params});
-			try writer.print("    {})\n", .{f.body});
-		}
 	}
 }
 

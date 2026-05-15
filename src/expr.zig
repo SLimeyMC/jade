@@ -118,4 +118,35 @@ pub const Expr = union(enum) {
 		e.* = copy.*;
 		return e;
 	}
+
+	pub fn format(
+		self: *Expr,
+		writer: *std.Io.Writer,
+	) !void {
+		switch (self.*) {
+			.Nil => try writer.writeAll("()"),
+			.Symbol => |s| try writer.writeAll(s),
+			.Pair => {
+				try writer.writeByte('(');
+				try format(self.car(), writer);
+				var node = self.cdr();
+				while (node.* == .Pair) : (node = node.cdr()) {
+					try writer.writeByte(' ');
+					try format(node.car(), writer);
+				}
+				if (node.* != .Nil) {
+					try writer.writeAll(" . ");
+					try format(node, writer);
+				}
+				try writer.writeByte(')');
+			},
+			.Integer => |i| try writer.print("{d}", .{i}),
+			.Bool => |b| try if (b) writer.writeAll("t") else writer.writeAll("nil"),
+			.Function => |f| {
+				try writer.print("(fn ({any})\n ", .{f.params});
+				try format(f.body, writer);
+				try writer.writeAll(")\n");
+			}
+		}
+	}
 };
