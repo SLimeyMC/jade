@@ -7,6 +7,7 @@ UnexpectedPop,
 UnexpectedRParen,
 UnexpectedEOF,
 UnterminatedSymbol,
+UnexpectedDotOnDollar,
 } || std.mem.Allocator.Error || std.Io.Reader.Error;
 
 pub const Token = union(enum) {
@@ -17,10 +18,8 @@ pub const Token = union(enum) {
 	Comma,
 	DoubleQuote,
 	Newline,
-	// DollarSymbol: []const []const u8,
-	// ColonSymbol: []const u8,
-	// HashSymbol: []const u8,
-	// AtSymbol: []const u8,
+	Dollar,
+	Dot,
 	Symbol: []const u8,
 };
 
@@ -186,6 +185,19 @@ const NormalConsumer = struct {
 					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 128)
 				});
 			},
+			'$' => {
+				if (!lexer.options.parse.dollar_symbol) {
+					try lexer.pushConsumer(SymbolConsumer, .{
+						.current = try std.ArrayList(u8)
+						.initCapacity(lexer.gpa, 32),
+					});
+					return;
+				}
+				_ = try lexer.take();
+				try lexer.pushConsumer(DollarConsumer, .{
+					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 32),
+				});
+			},
 			else =>
 				try lexer.pushConsumer(SymbolConsumer, .{
 					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 128)
@@ -233,6 +245,57 @@ const PipeConsumer = struct {
 	}
 
 	fn deinit(self: *PipeConsumer, gpa: std.mem.Allocator) void {
+		self.current.deinit(gpa);
+	}
+};
+
+const DollarConsumer = struct {
+	current: std.ArrayList(u8),
+	started: bool = false,
+
+	fn consume(self: *DollarConsumer, lexer: *Lexer, char: u8) Error!void {
+		if (!self.started) {
+			if (char == '(') {
+				try lexer.push(.Dollar);
+				try lexer.popConsumer();
+				return;
+			}
+
+			if (isDelimiter(char)) {
+				try lexer.push(.{ .Symbol = try lexer.gpa.dupe(u8, "$") });
+				try lexer.popConsumer();
+				return;
+			}
+
+			try lexer.push(.Dollar);
+		}
+
+		if (char == '.') {
+			if (self.current.items.len == 0) return error.UnexpectedDotOnDollar;
+			try lexer.push(.{ .Symbol = try self.current.toOwnedSlice(lexer.gpa) });
+
+			self.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 32);
+			try lexer.push(.Dot);
+			_ = try lexer.take();
+			return;
+		}
+
+		if (isDelimiter(char)) {
+			if (self.current.items.len != 0)
+				try lexer.push(.{
+					.Symbol = try self.current.toOwnedSlice(lexer.gpa),
+				});
+
+			try lexer.popConsumer();
+			return;
+		}
+
+		self.started = true;
+		try self.current.append(lexer.gpa, char);
+		_ = try lexer.take();
+	}
+
+	fn deinit(self: *DollarConsumer, gpa: std.mem.Allocator) void {
 		self.current.deinit(gpa);
 	}
 };

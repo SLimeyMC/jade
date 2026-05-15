@@ -17,7 +17,7 @@ The only macro that exist in Jade are
 : $value -> (ref value)
 : $value.subvalue -> (ref value subvalue)
 : :value) -> (on value)
-/currently reader don't parse ~#~, ~,@~, ~@~, ~$~, :/
+/currently reader don't parse ~#~, ~,@~, ~@~, ~:~ as unique symbol./
 
 The only literal reader can parse is string, pair, and nil. Integer, boolean exist but they are part of the evaluator, say you write true, the evaluator will parse it as string of "true" but evaluator can have ability of instead parsing it as boolean true, think of it as javascript string interpolation. List, map and so on are using the same expression so ~(List 1 2)~ or ~(Map (a 2) (b 1))~. Sometimes symbol needed space, in this case wrap the symbol with ~||~, for example ~|hello world|~, use ~\|~ to escape. There are /no/ interpolation or templating inside the symbol unless the library provided it.
 
@@ -47,11 +47,10 @@ Also to type for list it would be :[_]:int and map :[str]:int.
 : ;; operator like = > < <= >= where it check equality for each symbol with && for each succesor to it's predecessor
 
 There are other keyword that is sensitive to context, they are evaluated as is other than the exception:
+
 : (tag |this is doc|) ;; tag can be think of as tagging something.
 : (empty) ;; empty can be think of empty list (because () is equal to nil), although this keyword are sensitive to context.
 : (else cond2) ;; else here for cond block
-
-The other ~hash~, and on are also keyword that is sensitive to context, and there are no sensible default/consensus on which one should apply, it should be up to the library to handle it.
 
 * Evaluation
 In Jade, the only allocation that happen are stack local. There are no borrowing or anything, because concept of function must be total. This is to ensure declarativity of the configuration. For example:
