@@ -3,15 +3,7 @@ const Env = @import("env.zig");
 const EvalError = @import("eval.zig").EvalError;
 const Lexer = @import("reader/lexer.zig");
 const Token = Lexer.Token;
-
-const Error = error {
-UnexpectedRParen,
-UnexpectedEOF,
-UnexpectedEndOfStream,
-UnterminatedSymbol,
-OutOfMemory,
-};
-
+pub const parse = @import("reader/parser.zig").parse;
 
 pub const Function = struct {
 	params: []const []const u8,
@@ -141,59 +133,3 @@ pub const ReaderOptions = struct {
 	preserve_newlines: bool = false,
 	parse: ParseOptions = .{}
 };
-
-pub fn read(allocator: std.mem.Allocator, reader: std.Io.Reader, options: ReaderOptions) Error![]Token {
-	const token = try Lexer.tokenize(allocator, reader.buffered(), options);
-	parse(allocator, token, options);
-}
-
-fn isDelimiter(c: u8) bool {
-	return std.ascii.isWhitespace(c)
-		or c == '(' or c == ')'
-		or c == '\'' or c == '`'
-		or c == ',' or c == '"'
-		or c == '|';
-}
-
-pub fn parse(allocator: std.mem.Allocator, tokens: []Token, options: ReaderOptions) Error!*Expr {
-	var i: usize = 0;
-	return parseExpr(allocator, tokens, &i, options);
-}
-
-pub fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize, options: ReaderOptions) Error!*Expr {
-	while (i.* < tokens.len) {
-		const tok = tokens[i.*];
-		i.* += 1;
-
-		return switch (tok) {
-			.Newline => Expr.symbol(allocator, "newline" ),
-			.Symbol => |s| Expr.symbol(allocator, s ),
-			.LParen => parseList(allocator, tokens, i, options),
-			.Quote => makeUnary(allocator, "quote", tokens, i, options),
-			.Backtick => makeUnary(allocator, "quasiquote", tokens, i, options),
-			.Comma => makeUnary(allocator, "unquote", tokens, i, options),
-			.DoubleQuote => makeUnary(allocator, "doublequote", tokens, i, options),
-			.RParen => error.UnexpectedRParen,
-		};
-	}
-
-	return error.UnexpectedEOF;
-}
-
-fn parseList(allocator: std.mem.Allocator, tokens: []Token, i: *usize, mode: ReaderOptions) Error!*Expr {
-	if (i.* >= tokens.len) return error.UnexpectedEOF;
-	if (tokens[i.*] == .RParen) { i.* += 1; return Expr.nil(allocator); }
-
-	const head = try parseExpr(allocator, tokens, i, mode);
-	const tail = try parseList(allocator, tokens, i, mode);
-	return try Expr.pair(allocator, head, tail);
-}
-
-fn makeUnary(allocator: std.mem.Allocator, name: []const u8, tokens: []Token, i: *usize, mode: ReaderOptions) Error!*Expr {
-	const inner = try parseExpr(allocator, tokens, i, mode);
-	return try Expr.pair(
-		allocator,
-		try Expr.symbol(allocator, name),
-		try Expr.pair(allocator, inner, try Expr.nil(allocator))
-	);
-}

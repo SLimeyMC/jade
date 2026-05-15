@@ -47,7 +47,7 @@ pub fn main(init: std.process.Init) !void {
 
 		if (lexer.paren_depth == 0) {
 			const token = try lexer.tokens.toOwnedSlice(allocator);
-			const expr = try reader.parse(allocator, token, .{});
+			const expr = try reader.parse(allocator, token);
 			const result = try jade.eval(expr, &env, &fns, allocator);
 			try stdout.writeAll("   ~> ");
 			try printExpr(result, stdout);
