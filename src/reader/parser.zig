@@ -34,6 +34,7 @@ fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize) Error!*Ex
 			.Backtick => makeUnary(allocator, "quasiquote", tokens, i),
 			.Comma => makeUnary(allocator, "unquote", tokens, i),
 			.DoubleQuote => makeUnary(allocator, "doublequote", tokens, i),
+			.CommaAtt => makeUnary(allocator, "unquote-splice", tokens, i),
 			.Dollar => parseDollar(allocator, tokens, i),
 			.Dot => error.UnexpectedDot,
 			.RParen => error.UnexpectedRParen,

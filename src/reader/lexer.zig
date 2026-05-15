@@ -16,6 +16,7 @@ pub const Token = union(enum) {
 	Quote,
 	Backtick,
 	Comma,
+	CommaAt,
 	DoubleQuote,
 	Newline,
 	Dollar,
@@ -162,7 +163,7 @@ const NormalConsumer = struct {
 		switch (char) {
 			' ', '\t', '\r' => _ = try lexer.take(),
 			'\n' => {
-				_ = try lexer.reader.takeByte();
+				_ = try lexer.take();
 				if (lexer.options.preserve_newlines) {
 					try lexer.push(.Newline);
 				}
@@ -178,9 +179,12 @@ const NormalConsumer = struct {
 			} else return error.UnexpectedRParen,
 			'\'' => try lexer.takePush(.Quote),
 			'`' => try lexer.takePush(.Backtick),
-			',' => try lexer.takePush(.Comma),
+			',' => if (try lexer.peek() == '@'){
+				try lexer.take();
+				try lexer.takePush(.CommaAt);
+			} else try lexer.takePush(.Comma),
 			'|' => {
-				_ = try lexer.reader.takeByte();
+				_ = try lexer.take();
 				try lexer.pushConsumer(PipeConsumer, .{
 					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 128)
 				});
