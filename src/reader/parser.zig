@@ -2,7 +2,7 @@ const std = @import("std");
 const Env = @import("../env.zig");
 const EvalError = @import("../eval.zig").EvalError;
 const Lexer = @import("lexer.zig");
-const Expr = @import("../reader.zig").Expr;
+const Expr = @import("../expr.zig").Expr;
 const Token = Lexer.Token;
 
 const Error = error {
@@ -13,8 +13,7 @@ UnexpectedEndOfStream,
 UnterminatedSymbol,
 ExpectedSymbolAfterDollar,
 ExpectedSymbolAfterDot,
-OutOfMemory,
-};
+} || std.mem.Allocator.Error ;
 
 
 pub fn parse(allocator: std.mem.Allocator, tokens: []Token) Error!*Expr {
@@ -22,7 +21,7 @@ pub fn parse(allocator: std.mem.Allocator, tokens: []Token) Error!*Expr {
 	return parseExpr(allocator, tokens, &i);
 }
 
-pub fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize) Error!*Expr {
+fn parseExpr(allocator: std.mem.Allocator, tokens: []Token, i: *usize) Error!*Expr {
 	while (i.* < tokens.len) {
 		const token = tokens[i.*];
 		i.* += 1;

@@ -186,7 +186,7 @@ const NormalConsumer = struct {
 				});
 			},
 			'$' => {
-				if (!lexer.options.parse.dollar_symbol) {
+				if (!lexer.options.dollar_reference) {
 					try lexer.pushConsumer(SymbolConsumer, .{
 						.current = try std.ArrayList(u8)
 						.initCapacity(lexer.gpa, 32),

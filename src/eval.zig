@@ -1,6 +1,5 @@
 const std = @import("std");
-const reader = @import("reader.zig");
-const Expr = reader.Expr;
+const Expr = @import("expr.zig").Expr;
 const Env = @import("env.zig");
 
 pub const EvalError = error {
@@ -12,8 +11,7 @@ ArityError,
 DivisionByZero,
 NotCallable,
 NotAList,
-OutOfMemory,
-};
+} || std.mem.Allocator.Error;
 
 const Fn = union(enum) {
     eager: *const fn (args: []const *Expr, env: *Env, allocator: std.mem.Allocator) EvalError!*Expr,

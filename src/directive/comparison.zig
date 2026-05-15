@@ -1,8 +1,7 @@
 const std = @import("std");
-const reader = @import("../reader.zig");
 const eval = @import("../eval.zig");
 const Env = @import("../env.zig");
-const Expr = reader.Expr;
+const Expr = @import("../expr.zig").Expr;
 const EvalError = eval.EvalError;
 
 pub fn fnStrictEql(
