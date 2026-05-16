@@ -78,16 +78,16 @@ fn peek(self: *Lexer) !u8 {
 	return try self.reader.peekByte();
 }
 
-fn take(self: *Lexer) !u8 {
-	return try self.reader.takeByte();
+fn omit(self: *Lexer) !void {
+	_ = try self.reader.takeByte();
 }
 
 fn push(self: *Lexer, token: Token) !void {
 	try self.tokens.append(self.gpa, token);
 }
 
-fn takePush(self: *Lexer, token: Token) !void {
-	_ = try self.take();
+fn omitPush(self: *Lexer, token: Token) !void {
+	try self.omit();
 	try self.push(token);
 }
 
@@ -147,7 +147,7 @@ fn isDelimiter(ch: u8) bool {
 
 pub fn next(self: *Lexer) Error!void {
 	while (true) {
-		const char = self.reader.peekByte() catch |err| switch (err) {
+		const char = self.peek() catch |err| switch (err) {
 			error.EndOfStream => break,
 			else => return err,
 		};
@@ -161,9 +161,9 @@ pub fn next(self: *Lexer) Error!void {
 const NormalConsumer = struct {
 	fn consume(_: *NormalConsumer, lexer: *Lexer, char: u8) Error!void {
 		switch (char) {
-			' ', '\t', '\r' => _ = try lexer.take(),
+			' ', '\t', '\r' => try lexer.omit(),
 			'\n' => {
-				_ = try lexer.take();
+				try lexer.omit();
 				if (lexer.options.preserve_newlines) {
 					try lexer.push(.Newline);
 				}
@@ -171,20 +171,20 @@ const NormalConsumer = struct {
 			},
 			'(' => {
 				lexer.paren_depth += 1;
-				try lexer.takePush(.LParen);
+				try lexer.omitPush(.LParen);
 			},
 			')' =>
 			if (lexer.paren_depth > 0) {
-				lexer.paren_depth -= 1; try lexer.takePush(.RParen);
+				lexer.paren_depth -= 1; try lexer.omitPush(.RParen);
 			} else return error.UnexpectedRParen,
-			'\'' => try lexer.takePush(.Quote),
-			'`' => try lexer.takePush(.Backtick),
+			'\'' => try lexer.omitPush(.Quote),
+			'`' => try lexer.omitPush(.Backtick),
 			',' => if (try lexer.peek() == '@'){
-				try lexer.take();
-				try lexer.takePush(.CommaAt);
-			} else try lexer.takePush(.Comma),
+				try lexer.omit();
+				try lexer.omitPush(.CommaAt);
+			} else try lexer.omitPush(.Comma),
 			'|' => {
-				_ = try lexer.take();
+				try lexer.omit();
 				try lexer.pushConsumer(PipeConsumer, .{
 					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 128)
 				});
@@ -197,7 +197,7 @@ const NormalConsumer = struct {
 					});
 					return;
 				}
-				_ = try lexer.take();
+				try lexer.omit();
 				try lexer.pushConsumer(DollarConsumer, .{
 					.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 32),
 				});
@@ -220,7 +220,7 @@ const SymbolConsumer = struct {
 			return;
 		}
 		try self.current.append(lexer.gpa, char);
-		_ = try lexer.take();
+		try lexer.omit();
 	}
 
 	fn deinit(self: *SymbolConsumer, gpa: std.mem.Allocator) void {
@@ -245,7 +245,7 @@ const PipeConsumer = struct {
 				try self.current.appendSlice(lexer.gpa, &[_]u8{'\\', char})
 			else try self.current.append(lexer.gpa,char,),
 		}
-		_ = try lexer.take();
+		try lexer.omit();
 	}
 
 	fn deinit(self: *PipeConsumer, gpa: std.mem.Allocator) void {
@@ -280,7 +280,7 @@ const DollarConsumer = struct {
 
 			self.current = try std.ArrayList(u8).initCapacity(lexer.gpa, 32);
 			try lexer.push(.Dot);
-			_ = try lexer.take();
+			try lexer.omit();
 			return;
 		}
 
@@ -296,7 +296,7 @@ const DollarConsumer = struct {
 
 		self.started = true;
 		try self.current.append(lexer.gpa, char);
-		_ = try lexer.take();
+		try lexer.omit();
 	}
 
 	fn deinit(self: *DollarConsumer, gpa: std.mem.Allocator) void {
