@@ -47,11 +47,16 @@ pub fn main(init: std.process.Init) !void {
 
 		if (lexer.paren_depth == 0) {
 			const token = try lexer.tokens.toOwnedSlice(allocator);
-			const expr = try reader.parse(allocator, token);
-			const result = try jade.eval(expr, &env, &fns, allocator);
-			try stdout.writeAll("   ~> ");
-			try Expr.format(result, stdout);
-			try stdout.writeAll("\njade> ");
+			const exprs = try reader.parse(allocator, token);
+			defer allocator.free(token);
+			defer allocator.free(exprs);
+			for (exprs) |expr| {
+				const result = try jade.eval(expr, &env, &fns, allocator);
+				try stdout.writeAll("   ~> ");
+				try Expr.format(result, stdout);
+				try stdout.writeByte('\n');
+			}
+			try stdout.writeAll("jade> ");
 		} else {
 			try stdout.writeAll("    > ");
 			for (0..lexer.paren_depth) |_|
