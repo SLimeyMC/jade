@@ -6,7 +6,7 @@ const Error = @import("eval.zig").EvalError;
 pub const Closure = struct {
 	params: []const []const u8,
 	body: *Expr,
-	env: *Scope,
+	scope: *Scope,
 };
 
 pub const Expr = union(enum) {

@@ -71,3 +71,46 @@ pub fn fnSet(
 	allocator.destroy(value);
 	return Expr.nil(allocator);
 }
+
+pub fn fnFn(
+	args: []const *Expr,
+	scope: *Scope,
+	_: *Callables,
+	allocator: std.mem.Allocator,
+) eval.EvalError!*Expr {
+
+	if (args.len != 2)
+		return error.ArityError;
+
+	const params_expr = args[0];
+	const body_expr = args[1];
+
+	var params = try std.ArrayList([]const u8).initCapacity(allocator, 8);
+	errdefer params.deinit(allocator);
+
+	var node = params_expr;
+
+	while (node.* == .Pair) : (node = node.cdr()) {
+		const param = switch (node.car().*) {
+			.Symbol => |s| s,
+			else => return error.TypeError,
+		};
+
+		try params.append(allocator, param);
+	}
+
+	if (node.* != .Nil)
+		return error.NotAList;
+
+	const closure = try allocator.create(Expr);
+
+	closure.* = .{
+		.Closure = .{
+			.params = try params.toOwnedSlice(allocator),
+			.body = body_expr,
+			.scope = scope,
+		},
+	};
+
+	return closure;
+}

@@ -19,7 +19,6 @@ const Callable = union(enum) {
 	eager: *const fn (args: []const *Expr, allocator: std.mem.Allocator) EvalError!*Expr,
 	macro: *const fn (args: []const *Expr, scope: *Scope, callables: *Callables, allocator: std.mem.Allocator) EvalError!*Expr,
 	special: *const fn (args: []const *Expr, scope: *Scope, callables: *Callables, allocator: std.mem.Allocator) EvalError!*Expr,
-	closure: Closure
 };
 
 pub const Callables = std.StringHashMap(Callable);
@@ -43,12 +42,32 @@ fn evalPair(expr: *Expr, scope: *Scope, callables: *Callables, allocator: std.me
 
 	const name = switch (head.*) {
 		.Symbol => |s| s,
+		.Closure => |fun| {
+			var args = try std.ArrayList(*Expr).initCapacity(allocator, 64);
+			defer args.deinit(allocator);
+
+			var node = rest;
+			while (node.* == .Pair) : (node = node.cdr()) {
+				const evaluated = try eval(node.car(), scope, callables, allocator);
+				try args.append(allocator, evaluated);
+			}
+
+			if (args.items.len != fun.params.len) return error.ArityError;
+			var child = try fun.scope.push(allocator);
+
+			for (fun.params, args.items) |param, arg| {
+				try child.def(param, .{
+					.value = arg.*,
+					.mutable = false,
+				});
+			}
+
+			return eval(fun.body, child, callables, allocator);
+		},
 		else => return error.TypeError,
 	};
 
-	const f = callables.get(name) orelse return error.UnboundSymbol;
-
-	return switch (f) {
+	return if (callables.get(name)) |f| switch (f) {
 		.eager => |fn_eager| blk: {
 			var args = try std.ArrayList(*Expr).initCapacity(allocator, 64);
 			defer args.deinit(allocator);
@@ -93,10 +112,29 @@ fn evalPair(expr: *Expr, scope: *Scope, callables: *Callables, allocator: std.me
 			const expanded = try fn_special(args.items, scope, callables, allocator);
 			break :blk expanded;
 		},
+	} else if (scope.get(name)) |e| switch (e.value) {
+		.Closure => |fun| {
+			var args = try std.ArrayList(*Expr).initCapacity(allocator, 64);
+			defer args.deinit(allocator);
 
-		.closure => |fn_closure| blk: {
-			_ = fn_closure;
-			break :blk Expr.nil(allocator);
-		}
-	};
+			var node = rest;
+			while (node.* == .Pair) : (node = node.cdr()) {
+				const evaluated = try eval(node.car(), scope, callables, allocator);
+				try args.append(allocator, evaluated);
+			}
+
+			if (args.items.len != fun.params.len) return error.ArityError;
+			var child = try fun.scope.push(allocator);
+
+			for (fun.params, args.items) |param, arg| {
+				try child.def(param, .{
+					.value = arg.*,
+					.mutable = false,
+				});
+			}
+
+			return eval(fun.body, child, callables, allocator);
+		},
+		else => return error.TypeError,
+	} else return error.UnboundSymbol;
 }

@@ -88,12 +88,14 @@ pub const Variables = opaque {
 	pub const fnLet = variables.fnLet;
 	pub const fnVar = variables.fnVar;
 	pub const fnSet = variables.fnSet;
+	pub const fnFn = variables.fnFn;
 
 	pub fn init(callables: *Callables) !void {
 		try callables.put("do", .{ .special = fnDo });
 		try callables.put("let", .{ .special = fnLet });
 		try callables.put("var", .{ .special = fnVar });
 		try callables.put("set", .{ .special = fnSet });
+		try callables.put("fn", .{ .special = fnFn });
 	}
 };
 
