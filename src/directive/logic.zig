@@ -11,6 +11,7 @@ pub fn fnOr(
 	_: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	for (args) |arg| {
 		const value = try arg.toBool();
 		if (value)
@@ -25,6 +26,7 @@ pub fn fnNor(
 	_: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	for (args) |arg| {
 		const value = try arg.toBool();
 		if (value)
@@ -39,6 +41,7 @@ pub fn fnAnd(
 	_: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	for (args) |arg| {
 		const value = try arg.toBool();
 		if (!value)
