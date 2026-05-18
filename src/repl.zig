@@ -1,9 +1,9 @@
 const std = @import("std");
 const jade = @import("jade");
 const reader = jade.reader;
-const Env = jade.Env;
+const Scope = jade.Scope;
 const Expr = jade.Expr;
-const FnTable = jade.FnTable;
+const Callables = jade.Callables;
 const directive = jade.directive;
 const Lexer = jade.Lexer;
 
@@ -14,10 +14,10 @@ pub fn main(init: std.process.Init) !void {
 	defer arena.deinit();
 	const a = arena.allocator();
 
-	var env = Env.init(a, null);
-	var fns = FnTable.init(a);
+	var env = Scope.init(a, null);
+	var callables = Callables.init(a);
 
-	try directive.init(&fns);
+	try directive.init(&callables);
 
 	var stdin_buffer: [4096]u8 = undefined;
 	var stdout_buffer: [4096]u8 = undefined;
@@ -51,7 +51,7 @@ pub fn main(init: std.process.Init) !void {
 			defer allocator.free(token);
 			defer allocator.free(exprs);
 			for (exprs) |expr| {
-				const result = try jade.eval(expr, &env, &fns, allocator);
+				const result = try jade.eval(expr, &env, &callables, allocator);
 				try stdout.writeAll("   ~> ");
 				try Expr.format(result, stdout);
 				try stdout.writeByte('\n');

@@ -1,15 +1,12 @@
 const std = @import("std");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig");
 const Expr = @import("../expr.zig").Expr;
 const EvalError = eval.EvalError;
 
 pub fn fnStrictEql(
 	args: []const *Expr,
-	env: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
-	_ = env;
 	if (args.len == 0) return error.ArityError;
 	if (args.len == 1)
 		return Expr.boolean(allocator, true);
@@ -37,7 +34,7 @@ pub fn fnStrictEql(
 						(eql(p[0], b.car())) and
 						(eql(p[1], b.cdr()));
 				},
-				.Function => {
+				.Closure => {
 					return false;
 				},
 			}
@@ -55,8 +52,7 @@ pub fn fnStrictEql(
 	return Expr.boolean(allocator, true);
 }
 
-pub fn fnEql(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) eval.EvalError!*Expr {
-	_ = env;
+pub fn fnEql(args: []const *Expr, allocator: std.mem.Allocator) eval.EvalError!*Expr {
 	if (args.len == 0) return error.ArityError;
 	if (args.len == 1)
 		return Expr.boolean(allocator, true);
@@ -79,7 +75,7 @@ pub fn fnEql(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) eval.
 				.Integer => |v| {
 					return v == b.toIntegerOrZero() catch return false;
 				},
-				.Function => {
+				.Closure => {
 					return a == b;
 				},
 			}
@@ -96,10 +92,8 @@ pub fn fnEql(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) eval.
 
 pub fn fnIs(
 	args: []const *Expr,
-	env: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
-	_ = env;
 	if (args.len == 1) return error.ArityError;
 
 	const first = args[0];
@@ -138,29 +132,25 @@ pub fn fnIs(
 	return Expr.boolean(allocator, true);
 }
 
-pub fn fnLt(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) EvalError!*Expr {
-	_ = env;
+pub fn fnLt(args: []const *Expr, allocator: std.mem.Allocator) EvalError!*Expr {
 	return Expr.boolean(allocator, try compare(args, struct {
 		inline fn f(a: i32, b: i32) bool { return a < b; }
 	}.f));
 }
 
-pub fn fnLte(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) EvalError!*Expr {
-	_ = env;
+pub fn fnLte(args: []const *Expr, allocator: std.mem.Allocator) EvalError!*Expr {
 	return Expr.boolean(allocator, try compare(args, struct {
 		inline fn f(a: i32, b: i32) bool { return a <= b; }
 	}.f));
 }
 
-pub fn fnGt(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) EvalError!*Expr {
-	_ = env;
+pub fn fnGt(args: []const *Expr, allocator: std.mem.Allocator) EvalError!*Expr {
 	return Expr.boolean(allocator, try compare(args, struct {
 		inline fn f(a: i32, b: i32) bool { return a > b; }
 	}.f));
 }
 
-pub fn fnGte(args: []const *Expr, env: *Env, allocator: std.mem.Allocator) EvalError!*Expr {
-	_ = env;
+pub fn fnGte(args: []const *Expr, allocator: std.mem.Allocator) EvalError!*Expr {
 	return Expr.boolean(allocator, try compare(args, struct {
 		inline fn f(a: i32, b: i32) bool { return a >= b; }
 	}.f));

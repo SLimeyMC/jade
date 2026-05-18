@@ -1,6 +1,6 @@
 const Parser = @This();
 const std = @import("std");
-const Env = @import("../env.zig");
+const Scope = @import("../scope.zig");
 const EvalError = @import("../eval.zig").EvalError;
 const Lexer = @import("lexer.zig");
 const Expr = @import("../expr.zig").Expr;

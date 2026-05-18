@@ -1,33 +1,32 @@
 const std = @import("std");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig");
+const Scope = @import("../scope.zig");
 const Expr = @import("../expr.zig").Expr;
-const FnTable = eval.FnTable;
+const Callable = eval.Callables;
 const EvalError = eval.EvalError;
 
 pub fn fnWhen(
 	args: []const *Expr,
-	env: *Env,
-	fns: *FnTable,
+	scope: *Scope,
+	callable: *Callable,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	for (args) |clause| {
-		if (clause.* != .Pair)
-			return error.TypeError;
+		if (clause.* != .Pair) return error.TypeError;
 		const condition = clause.car();
 		const expr = clause.cdr().car();
 
 		const result = try eval.eval(
 			condition,
-			env,
-			fns,
+			scope,
+			callable,
 			allocator,
 		);
 		if (try result.toBool()) {
 			return eval.eval(
 				expr,
-				env,
-				fns,
+				scope,
+				callable,
 				allocator,
 			);
 		}

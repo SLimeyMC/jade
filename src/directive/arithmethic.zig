@@ -1,15 +1,12 @@
 const std = @import("std");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig");
 const Expr = @import("../expr.zig").Expr;
 const EvalError = eval.EvalError;
 
 pub fn fnAdd(
 	args: []const *Expr,
-	env: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
-	_ = env;
 	const acc = try foldInt(
 		args,
 		0,
@@ -25,10 +22,8 @@ pub fn fnAdd(
 
 pub fn fnSub(
 	args: []const *Expr,
-	env: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
-	_ = env;
 	if (args.len == 0) return error.ArityError;
 	const acc = try foldInt(
 		args[1..],
@@ -45,10 +40,8 @@ pub fn fnSub(
 
 pub fn fnMul(
 	args: []const *Expr,
-	env: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
-	_ = env;
 	const acc = try foldInt(
 		args,
 		1,
@@ -64,10 +57,8 @@ pub fn fnMul(
 
 pub fn fnDiv(
 	args: []const *Expr,
-	env: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
-	_ = env;
 	if (args.len == 0)
 		return error.ArityError;
 	const acc = try foldInt(

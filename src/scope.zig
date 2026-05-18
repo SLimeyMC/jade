@@ -1,4 +1,4 @@
-const Env = @This();
+const Scope = @This();
 const std = @import("std");
 const Expr = @import("expr.zig").Expr;
 
@@ -7,36 +7,36 @@ const Binding = struct {
 	mutable: bool,
 };
 
-parent: ?*Env,
+parent: ?*Scope,
 map: std.StringHashMap(Binding),
 
-pub fn init(allocator: std.mem.Allocator, parent: ?*Env) Env {
+pub fn init(allocator: std.mem.Allocator, parent: ?*Scope) Scope {
 	return .{ .parent = parent, .map = std.StringHashMap(Binding).init(allocator), };
 }
 
-pub fn deinit(self: *Env) void {
+pub fn deinit(self: *Scope) void {
 	self.map.deinit();
 }
 
-pub fn push(self: *Env, allocator: std.mem.Allocator) !*Env {
-	const env = try allocator.create(Env);
-	env.* = Env.init(allocator, self);
+pub fn push(self: *Scope, allocator: std.mem.Allocator) !*Scope {
+	const env = try allocator.create(Scope);
+	env.* = Scope.init(allocator, self);
 	return env;
 }
 
-pub fn pop(self: *Env, allocator: std.mem.Allocator) ?*Env {
+pub fn pop(self: *Scope, allocator: std.mem.Allocator) ?*Scope {
 	const parent = self.parent;
 	self.deinit();
 	allocator.destroy(self);
 	return parent;
 }
 
-pub fn def(self: *Env, name: []const u8, bind: Binding) !void {
+pub fn def(self: *Scope, name: []const u8, bind: Binding) !void {
 	try self.map.put(name, bind);
 }
 
-pub fn get(self: *Env, name: []const u8) ?Binding {
-	var env: ?*Env = self;
+pub fn get(self: *Scope, name: []const u8) ?Binding {
+	var env: ?*Scope = self;
 	while (env) |e| {
 		if (e.map.get(name)) |binding|
 			return binding;
@@ -45,8 +45,8 @@ pub fn get(self: *Env, name: []const u8) ?Binding {
 	return null;
 }
 
-pub fn getPtr(self: *Env, name: []const u8) ?*Binding {
-	var env: ?*Env = self;
+pub fn getPtr(self: *Scope, name: []const u8) ?*Binding {
+	var env: ?*Scope = self;
 	while (env) |e| {
 		if (e.map.getPtr(name)) |binding|
 			return binding;
@@ -56,7 +56,7 @@ pub fn getPtr(self: *Env, name: []const u8) ?*Binding {
 }
 
 pub fn getExpr(
-	self: *Env,
+	self: *Scope,
 	name: []const u8,
 	allocator: std.mem.Allocator,
 ) ?*Expr {
@@ -67,7 +67,7 @@ pub fn getExpr(
 }
 
 pub fn set(
-	self: *Env,
+	self: *Scope,
 	name: []const u8,
 	value: Expr,
 ) !void {

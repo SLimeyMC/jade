@@ -1,12 +1,12 @@
 const std = @import("std");
-const Env = @import("env.zig");
+const Scope = @import("scope.zig");
 
 const Error = @import("eval.zig").EvalError;
 
-pub const Function = struct {
+pub const Closure = struct {
 	params: []const []const u8,
 	body: *Expr,
-	env: *Env,
+	env: *Scope,
 };
 
 pub const Expr = union(enum) {
@@ -16,7 +16,7 @@ pub const Expr = union(enum) {
 	Pair: [2]*Expr,
 	Integer: i32,
 	Bool: bool,
-	Function: Function,
+	Closure: Closure,
 
 	pub fn car(self: *Expr) *Expr { return self.Pair[0]; }
 	pub fn cdr(self: *Expr) *Expr { return self.Pair[1]; }
@@ -106,10 +106,10 @@ pub const Expr = union(enum) {
 
 	pub fn function(
 		allocator: std.mem.Allocator,
-		f: Function,
+		f: Closure,
 	) OOM!*Expr {
 		const e = try allocator.create(Expr);
-		e.* = .{ .Function = f };
+		e.* = .{ .Closure = f };
 		return e;
 	}
 
@@ -142,7 +142,7 @@ pub const Expr = union(enum) {
 			},
 			.Integer => |i| try writer.print("{d}", .{i}),
 			.Bool => |b| try if (b) writer.writeAll("t") else writer.writeAll("nil"),
-			.Function => |f| {
+			.Closure => |f| {
 				try writer.print("(fn ({any})\n ", .{f.params});
 				try format(f.body, writer);
 				try writer.writeAll(")\n");

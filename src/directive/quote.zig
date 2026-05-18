@@ -1,20 +1,17 @@
 const std = @import("std");
 const reader = @import("../reader.zig");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig");
+const Scope = @import("../scope.zig");
 const Expr = @import("../expr.zig").Expr;
-const FnTable = eval.FnTable;
+const Callables = eval.Callables;
 const EvalError = eval.EvalError;
 
 pub fn fnQuote(
 	args: []const *Expr,
-	env: *Env,
-	fns: *FnTable,
-	allocator: std.mem.Allocator,
+	_: *Scope,
+	_: *Callables,
+	_: std.mem.Allocator,
 ) eval.EvalError!*Expr {
-	_ = env;
-	_ = fns;
-	_ = allocator;
 
 	if (args.len != 1)
 		return error.ArityError;
@@ -24,8 +21,8 @@ pub fn fnQuote(
 
 pub fn fnQuasiquote(
 	args: []const *Expr,
-	env: *Env,
-	fns: *FnTable,
+	scope: *Scope,
+	callables: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	if (args.len != 1)
@@ -34,8 +31,8 @@ pub fn fnQuasiquote(
 	return quasiquote(
 		args[0],
 		1,
-		env,
-		fns,
+		scope,
+		callables,
 		allocator,
 	);
 }
@@ -43,8 +40,8 @@ pub fn fnQuasiquote(
 fn quasiquote(
 	expr: *Expr,
 	depth: usize,
-	env: *Env,
-	fns: *FnTable,
+	scope: *Scope,
+	callables: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	switch (expr.*) {
@@ -56,8 +53,8 @@ fn quasiquote(
 					if (depth == 1) {
 						return eval.eval(
 							expr.cdr().car(),
-							env,
-							fns,
+							scope,
+							callables,
 							allocator,
 						);
 					}
@@ -65,19 +62,18 @@ fn quasiquote(
 					return try quasiquote(
 						expr.cdr().car(),
 						depth - 1,
-						env,
-						fns,
+						scope,
+						callables,
 						allocator,
 					);
 				}
 
-			if (head.* == .Symbol and
-				std.mem.eql(u8, head.Symbol, "quasiquote")) {
+			if (head.* == .Symbol and std.mem.eql(u8, head.Symbol, "quasiquote")) {
 					return try quasiquote(
 						expr.cdr().car(),
 						depth + 1,
-						env,
-						fns,
+						scope,
+						callables,
 						allocator,
 					);
 				}
@@ -85,16 +81,16 @@ fn quasiquote(
 			const left = try quasiquote(
 				expr.car(),
 				depth,
-				env,
-				fns,
+				scope,
+				callables,
 				allocator,
 			);
 
 			const right = try quasiquote(
 				expr.cdr(),
 				depth,
-				env,
-				fns,
+				scope,
+				callables,
 				allocator,
 			);
 

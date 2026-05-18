@@ -1,12 +1,10 @@
 const std = @import("std");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig");
 const Expr = @import("../expr.zig").Expr;
 const EvalError = eval.EvalError;
 
 pub fn fnInt(
 	args: []const *Expr,
-	_: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	if (args.len != 1) return error.ArityError;
@@ -17,7 +15,6 @@ pub fn fnInt(
 
 pub fn fnIntOrZero(
 	args: []const *Expr,
-	_: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	if (args.len != 1) return error.ArityError;
@@ -28,7 +25,6 @@ pub fn fnIntOrZero(
 
 pub fn fnBool(
 	args: []const *Expr,
-	_: *Env,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	if (args.len != 1) return error.ArityError;

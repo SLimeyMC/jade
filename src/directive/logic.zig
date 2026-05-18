@@ -1,18 +1,18 @@
 const std = @import("std");
 const eval = @import("../eval.zig");
-const Env = @import("../env.zig");
+const Scope = @import("../scope.zig");
 const Expr = @import("../expr.zig").Expr;
-const FnTable = eval.FnTable;
+const Callables = eval.Callables;
 const EvalError = eval.EvalError;
 
 pub fn fnOr(
 	args: []const *Expr,
-	env: *Env,
-	fns: *FnTable,
+	_: *Scope,
+	_: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	for (args) |arg| {
-		const value = try (try eval.eval(arg, env, fns, allocator)).toBool();
+		const value = try arg.toBool();
 		if (value)
 			return Expr.boolean(allocator, true);
 	}
@@ -21,12 +21,12 @@ pub fn fnOr(
 
 pub fn fnNor(
 	args: []const *Expr,
-	env: *Env,
-	fns: *FnTable,
+	_: *Scope,
+	_: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	for (args) |arg| {
-		const value = try (try eval.eval(arg, env, fns, allocator)).toBool();
+		const value = try arg.toBool();
 		if (value)
 			return Expr.boolean(allocator, false);
 	}
@@ -35,12 +35,12 @@ pub fn fnNor(
 
 pub fn fnAnd(
 	args: []const *Expr,
-	env: *Env,
-	fns: *FnTable,
+	_: *Scope,
+	_: *Callables,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
 	for (args) |arg| {
-		const value = try (try eval.eval(arg, env, fns, allocator)).toBool();
+		const value = try arg.toBool();
 		if (!value)
 			return Expr.boolean(allocator, false);
 	}

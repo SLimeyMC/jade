@@ -1,4 +1,4 @@
-const FnTable = @import("eval.zig").FnTable;
+const Callables = @import("eval.zig").Callables;
 const arithmethic = @import("directive/arithmethic.zig");
 pub const Arithmethic = opaque {
 	pub const fnAdd = arithmethic.fnAdd;
@@ -6,11 +6,11 @@ pub const Arithmethic = opaque {
 	pub const fnMul = arithmethic.fnMul;
 	pub const fnDiv = arithmethic.fnDiv;
 
-	pub fn init(fns: *FnTable) !void {
-		try fns.put("+", .{ .eager = fnAdd });
-		try fns.put("-", .{ .eager = fnSub });
-		try fns.put("*", .{ .eager = fnMul });
-		try fns.put("/", .{ .eager = fnDiv });
+	pub fn init(callables: *Callables) !void {
+		try callables.put("+", .{ .eager = fnAdd });
+		try callables.put("-", .{ .eager = fnSub });
+		try callables.put("*", .{ .eager = fnMul });
+		try callables.put("/", .{ .eager = fnDiv });
 	}
 };
 
@@ -23,10 +23,10 @@ pub const Cast = opaque {
 	pub const fnIntOrZero = cast.fnIntOrZero;
 	pub const fnBool = cast.fnBool;
 
-	pub fn init(fns: *FnTable) !void {
-		try fns.put("int?", .{ .eager = fnInt });
-		try fns.put("int", .{ .eager = fnIntOrZero });
-		try fns.put("bool", .{ .eager = fnBool });
+	pub fn init(callables: *Callables) !void {
+		try callables.put("int?", .{ .eager = fnInt });
+		try callables.put("int", .{ .eager = fnIntOrZero });
+		try callables.put("bool", .{ .eager = fnBool });
 	}
 };
 
@@ -39,13 +39,13 @@ pub const Comparison = opaque {
 	pub const fnGt = comparison.fnGt;
 	pub const fnGte = comparison.fnGte;
 
-	pub fn init(fns: *FnTable) !void {
-		try fns.put("=", .{ .eager = fnEql });
-		try fns.put("=?", .{ .eager = fnStrictEql });
-        try fns.put(">", .{ .eager = fnGt });
-		try fns.put(">=", .{ .eager = fnGte });
-		try fns.put("<", .{ .eager = fnLt });
-		try fns.put("<=", .{ .eager = fnLte });
+	pub fn init(callables: *Callables) !void {
+		try callables.put("=", .{ .eager = fnEql });
+		try callables.put("=?", .{ .eager = fnStrictEql });
+        try callables.put(">", .{ .eager = fnGt });
+		try callables.put(">=", .{ .eager = fnGte });
+		try callables.put("<", .{ .eager = fnLt });
+		try callables.put("<=", .{ .eager = fnLte });
 	}
 };
 
@@ -53,8 +53,8 @@ const conditional = @import("directive/conditional.zig");
 pub const Conditional = opaque {
 	pub const fnWhen = conditional.fnWhen;
 
-	pub fn init(fns: *FnTable) !void {
-		try fns.put("cond", .{ .special = fnWhen });
+	pub fn init(callables: *Callables) !void {
+		try callables.put("cond", .{ .special = fnWhen });
 	}
 };
 
@@ -64,10 +64,10 @@ pub const Logic = opaque {
 	pub const fnNor = logic.fnNor;
 	pub const fnAnd = logic.fnAnd;
 
-	pub fn init(fns: *FnTable) !void {
-		try fns.put("or", .{ .special = fnOr });
-		try fns.put("nor", .{ .special = fnNor });
-		try fns.put("and", .{ .special = fnAnd });
+	pub fn init(callables: *Callables) !void {
+		try callables.put("or", .{ .special = fnOr });
+		try callables.put("nor", .{ .special = fnNor });
+		try callables.put("and", .{ .special = fnAnd });
 	}
 };
 
@@ -76,9 +76,9 @@ pub const Quote = opaque {
 	pub const fnQuote = quote.fnQuote;
 	pub const fnQuasiquote = quote.fnQuasiquote;
 
-	pub fn init(fns: *FnTable) !void {
-		try fns.put("quote", .{ .special = fnQuote });
-		try fns.put("quasiquote", .{ .special = fnQuasiquote });
+	pub fn init(callables: *Callables) !void {
+		try callables.put("quote", .{ .special = fnQuote });
+		try callables.put("quasiquote", .{ .special = fnQuasiquote });
 	}
 };
 
@@ -89,19 +89,19 @@ pub const Variables = opaque {
 	pub const fnVar = variables.fnVar;
 	pub const fnSet = variables.fnSet;
 
-	pub fn init(fns: *FnTable) !void {
-		try fns.put("do", .{ .special = fnDo });
-		try fns.put("let", .{ .special = fnLet });
-		try fns.put("var", .{ .special = fnVar });
-		try fns.put("set", .{ .special = fnSet });
+	pub fn init(callables: *Callables) !void {
+		try callables.put("do", .{ .special = fnDo });
+		try callables.put("let", .{ .special = fnLet });
+		try callables.put("var", .{ .special = fnVar });
+		try callables.put("set", .{ .special = fnSet });
 	}
 };
 
-pub fn init(fns: *FnTable) !void {
-	try Arithmethic.init(fns);
-	try Comparison.init(fns);
-	try Logic.init(fns);
-	try Variables.init(fns);
-	try Quote.init(fns);
-	try Conditional.init(fns);
+pub fn init(callables: *Callables) !void {
+	try Arithmethic.init(callables);
+	try Comparison.init(callables);
+	try Logic.init(callables);
+	try Variables.init(callables);
+	try Quote.init(callables);
+	try Conditional.init(callables);
 }

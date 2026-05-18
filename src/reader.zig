@@ -1,5 +1,5 @@
 const std = @import("std");
-const Env = @import("env.zig");
+const Scope = @import("scope.zig");
 const Lexer = @import("reader/lexer.zig");
 const Token = Lexer.Token;
 pub const parse = @import("reader/parser.zig").parse;
