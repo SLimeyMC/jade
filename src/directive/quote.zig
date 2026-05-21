@@ -12,7 +12,6 @@ pub fn fnQuote(
 	_: *Callables,
 	_: std.mem.Allocator,
 ) eval.EvalError!*Expr {
-
 	if (args.len != 1)
 		return error.ArityError;
 

@@ -7,6 +7,7 @@ pub fn fnAdd(
 	args: []const *Expr,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	const acc = try foldInt(
 		args,
 		0,
@@ -16,7 +17,6 @@ pub fn fnAdd(
 			}
 		}.f,
 	);
-	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 
@@ -24,6 +24,7 @@ pub fn fnSub(
 	args: []const *Expr,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	if (args.len == 0) return error.ArityError;
 	const acc = try foldInt(
 		args[1..],
@@ -34,7 +35,6 @@ pub fn fnSub(
 			}
 		}.f,
 	);
-	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 
@@ -42,6 +42,7 @@ pub fn fnMul(
 	args: []const *Expr,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	const acc = try foldInt(
 		args,
 		1,
@@ -51,7 +52,6 @@ pub fn fnMul(
 			}
 		}.f,
 	);
-	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 
@@ -59,8 +59,8 @@ pub fn fnDiv(
 	args: []const *Expr,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
-	if (args.len == 0)
-		return error.ArityError;
+	defer for (args) |arg| allocator.destroy(arg);
+	if (args.len == 0) return error.ArityError;
 	const acc = try foldInt(
 		args[1..],
 		try args[0].toIntegerOrZero(),
@@ -71,7 +71,6 @@ pub fn fnDiv(
 			}
 		}.f,
 	);
-	for (args) |arg| allocator.destroy(arg);
 	return Expr.integer(allocator, acc);
 }
 

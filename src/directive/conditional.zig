@@ -11,6 +11,7 @@ pub fn fnWhen(
 	callable: *Callable,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	for (args) |clause| {
 		if (clause.* != .Pair) return error.TypeError;
 		const condition = clause.car();
@@ -32,7 +33,6 @@ pub fn fnWhen(
 		}
 	}
 
-	for (args) |arg| allocator.destroy(arg);
 	return Expr.nil(allocator);
 }
 

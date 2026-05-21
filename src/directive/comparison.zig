@@ -7,6 +7,7 @@ pub fn fnStrictEql(
 	args: []const *Expr,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	if (args.len == 0) return error.ArityError;
 	if (args.len == 1)
 		return Expr.boolean(allocator, true);
@@ -46,13 +47,11 @@ pub fn fnStrictEql(
 			return Expr.boolean(allocator, false);
 		}
 	}
-
-	for (args) |arg|
-		allocator.destroy(arg);
 	return Expr.boolean(allocator, true);
 }
 
 pub fn fnEql(args: []const *Expr, allocator: std.mem.Allocator) eval.EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	if (args.len == 0) return error.ArityError;
 	if (args.len == 1)
 		return Expr.boolean(allocator, true);
@@ -94,6 +93,7 @@ pub fn fnIs(
 	args: []const *Expr,
 	allocator: std.mem.Allocator,
 ) EvalError!*Expr {
+	defer for (args) |arg| allocator.destroy(arg);
 	if (args.len == 1) return error.ArityError;
 
 	const first = args[0];

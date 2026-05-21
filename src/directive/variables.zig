@@ -78,7 +78,6 @@ pub fn fnFn(
 	_: *Callables,
 	allocator: std.mem.Allocator,
 ) eval.EvalError!*Expr {
-
 	if (args.len != 2)
 		return error.ArityError;
 
