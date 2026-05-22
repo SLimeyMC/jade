@@ -29,38 +29,47 @@ pub fn main(init: std.process.Init) !void {
 	const stdout = &stdout_writer.interface;
 
 	try stdout.writeAll("Running Jade Lisp 1.0.0\n");
-	try stdout.writeAll("jade> ");
 
-	try stdout.flush();
-
-	var lexer = try Lexer.init(
-		allocator,
-		stdin,
-		.{},
-	);
+	var lexer = try Lexer.initFromSlice(allocator, "", .{});
 	defer lexer.deinit();
 
-	// TODO: simple highlighting
-	// FIXME: many many memory leak
+	try stdout.writeAll("jade> ");
+	try stdout.flush();
+
 	while (true) {
-		try lexer.next();
+		const line = stdin.takeDelimiter('\n') catch |err| switch (err) {
+			error.ReadFailed => break,
+			else => return err,
+		} orelse return;
+
+		const source = try std.mem.concat(allocator, u8, &.{ lexer.source, line, "\n" });
+		errdefer allocator.free(source);
+		lexer.source = source;
+
+		_ = try lexer.nextLine();
 
 		if (lexer.paren_depth == 0) {
-			const token = try lexer.tokens.toOwnedSlice(allocator);
-			const exprs = try reader.parse(allocator, token);
-			defer allocator.free(token);
+			const tokens = lexer.tokens.items;
+			const exprs = try reader.parse(allocator, tokens);
 			defer allocator.free(exprs);
+
 			for (exprs) |expr| {
+				try stdout.flush();
 				const result = try jade.eval(expr, &env, &callables, allocator);
 				try stdout.writeAll("   ~> ");
 				try Expr.format(result, stdout);
 				try stdout.writeByte('\n');
 			}
+
+			lexer.tokens.clearRetainingCapacity();
+			allocator.free(lexer.source);
+			lexer.source = "";
+			lexer.pos = 0;
+
 			try stdout.writeAll("jade> ");
 		} else {
 			try stdout.writeAll("    > ");
-			for (0..lexer.paren_depth) |_|
-			try stdout.writeByte(' ');
+			for (0..lexer.paren_depth) |_| try stdout.writeByte(' ');
 		}
 		try stdout.flush();
 	}

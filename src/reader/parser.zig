@@ -90,6 +90,7 @@ pub fn parse(gpa: std.mem.Allocator, tokens: []Token) Error![]*Expr {
 			.DoubleQuote => try parser.makeUnary("doublequote"),
 			.CommaAt => try parser.makeUnary("unquote-splice"),
 			.Dollar => try parser.parseDollar(),
+			.PipeSymbol => {},
 			.Dot => return error.UnexpectedDot,
 		}
 	}
