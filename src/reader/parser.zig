@@ -80,7 +80,7 @@ pub fn parse(gpa: std.mem.Allocator, tokens: []Token) Error![]*Expr {
 		parser.i += 1;
 
 		switch (token) {
-			.Symbol => |s| try parser.emit(try Expr.symbol(gpa, s)),
+			.Symbol => |s| try parser.emit(try Expr.symbol(gpa, s.slice)),
 			.Newline => try parser.emit(try Expr.symbol(gpa, "newline")),
 			.LParen => try parser.pushFrame(),
 			.RParen => try parser.popFrame(),
@@ -142,7 +142,7 @@ fn parseDollar(self: *Parser) Error!void {
 		    .Symbol => |s| {
 			    tail.* = (try Expr.pair(
 				    self.gpa,
-				    try Expr.symbol(self.gpa, s),
+				    try Expr.symbol(self.gpa, s.slice),
 				    try Expr.nil(self.gpa),
 			    )).*;
 			    tail = tail.cdr();

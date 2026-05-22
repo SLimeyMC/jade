@@ -11,18 +11,21 @@ UnexpectedDotOnDollar,
 } || std.mem.Allocator.Error || std.Io.Reader.Error;
 
 pub const Token = union(enum) {
-	LParen,
-	RParen,
-	Quote,
-	Backtick,
-	Comma,
-	CommaAt,
-	DoubleQuote,
-	Newline,
-	Dollar,
-	Dot,
-	Symbol: []const u8,
-	PipeSymbol: []const u8,
+	const Positioned = struct { start: usize };
+	const Sliced = struct { start: usize, slice: []const u8 };
+
+	LParen: Positioned,
+	RParen: Positioned,
+	Quote: Positioned,
+	Backtick: Positioned,
+	Comma: Positioned,
+	CommaAt: Positioned,
+	DoubleQuote: Positioned,
+	Newline: Positioned,
+	Dollar: Positioned,
+	Dot: Positioned,
+	Symbol: Sliced,
+	PipeSymbol: Sliced,
 };
 
 const Consumer = struct {
@@ -97,13 +100,26 @@ fn omit(self: *Lexer) void {
 	self.pos += 1;
 }
 
-fn push(self: *Lexer, token: Token) !void {
-	try self.tokens.append(self.gpa, token);
+fn push(self: *Lexer, comptime tag: std.meta.Tag(Token), start: usize) Error!void {
+	try self.tokens.append(self.gpa, switch (tag) {
+		.Symbol, .PipeSymbol => @compileError("use pushSlice for Symbol and PipeSymbol"),
+		inline else => @unionInit(Token, @tagName(tag), .{ .start = start }),
+	});
 }
 
-fn omitPush(self: *Lexer, token: Token) !void {
-	try self.push(token);
+fn omitPush(self: *Lexer, comptime tag: std.meta.Tag(Token), start: usize) Error!void {
+	try self.push(tag, start);
 	self.pos += 1;
+}
+
+fn pushSlice(self: *Lexer, comptime tag: std.meta.Tag(Token), start: usize) Error!void {
+	try self.tokens.append(self.gpa, switch (tag) {
+		.Symbol, .PipeSymbol => @unionInit(Token, @tagName(tag), .{
+			.start = start,
+			.slice = self.source[start..self.pos],
+		}),
+		inline else => @compileError("use push for non-slice tokens"),
+	});
 }
 
 fn pushConsumer(
@@ -168,24 +184,24 @@ const NormalConsumer = struct {
 			'\n' => {
 				lexer.omit();
 				if (lexer.options.preserve_newlines) {
-					try lexer.push(.Newline);
+					try lexer.push(.Newline, lexer.pos);
 				}
 				return;
 			},
 			'(' => {
 				lexer.paren_depth += 1;
-				try lexer.omitPush(.LParen);
+				try lexer.omitPush(.LParen, lexer.pos);
 			},
 			')' =>
 			if (lexer.paren_depth > 0) {
-				lexer.paren_depth -= 1; try lexer.omitPush(.RParen);
+				lexer.paren_depth -= 1; try lexer.omitPush(.RParen, lexer.pos);
 			} else return error.UnexpectedRParen,
-			'\'' => try lexer.omitPush(.Quote),
-			'`' => try lexer.omitPush(.Backtick),
+			'\'' => try lexer.omitPush(.Quote, lexer.pos),
+			'`' => try lexer.omitPush(.Backtick, lexer.pos),
 			',' => if (lexer.peek() == '@'){
 				lexer.omit();
-				try lexer.omitPush(.CommaAt);
-			} else try lexer.omitPush(.Comma),
+				try lexer.omitPush(.CommaAt, lexer.pos);
+			} else try lexer.omitPush(.Comma, lexer.pos),
 			'|' => {
 				lexer.omit();
 				try lexer.pushConsumer(PipeConsumer, .{ .start = lexer.pos });
@@ -209,7 +225,7 @@ const SymbolConsumer = struct {
 
 	fn consume(self: *SymbolConsumer, lexer: *Lexer, char: u8) Error!void {
 		if (isDelimiter(char)) {
-			try lexer.push(.{ .Symbol = lexer.source[self.start..lexer.pos] });
+			try lexer.pushSlice(.Symbol, self.start);
 			try lexer.popConsumer();
 			return;
 		}
@@ -225,7 +241,7 @@ const PipeConsumer = struct {
 		switch (char) {
 			'\\' => self.escaping = !self.escaping,
 			'|' => if (!self.escaping) {
-				try lexer.push(.{ .PipeSymbol = lexer.source[self.start..lexer.pos] });
+				try lexer.pushSlice(.PipeSymbol, self.start);
 				try lexer.popConsumer();
 			},
 			else => {},
@@ -241,33 +257,33 @@ const DollarConsumer = struct {
 	fn consume(self: *DollarConsumer, lexer: *Lexer, char: u8) Error!void {
 		if (!self.started) {
 			if (char == '(') {
-				try lexer.push(.Dollar);
+				try lexer.push(.Dollar, lexer.pos);
 				try lexer.popConsumer();
 				return;
 			}
 
 			if (isDelimiter(char)) {
-				try lexer.push(.{ .Symbol = lexer.source[self.start - 1..lexer.pos] });
+				try lexer.pushSlice(.Symbol, self.start);
 				try lexer.popConsumer();
 				return;
 			}
 
-			try lexer.push(.Dollar);
+			try lexer.push(.Dollar, lexer.pos);
 			self.started = true;
 		}
 
 		if (char == '.') {
 			if (lexer.pos == self.start) return error.UnexpectedDotOnDollar;
-			try lexer.push(.{ .Symbol = lexer.source[self.start..lexer.pos] });
+			try lexer.pushSlice(.Symbol, self.start);
 
-			self.start = lexer.pos;
-			try lexer.push(.Dot);
+			try lexer.push(.Dot,  lexer.pos);
 			lexer.omit();
+			self.start = lexer.pos;
 			return;
 		}
 
 		if (isDelimiter(char)) {
-			if (lexer.pos > self.start) try lexer.push(.{ .Symbol = lexer.source[self.start..lexer.pos] });
+			if (lexer.pos > self.start) try lexer.pushSlice(.Symbol, self.start);
 			try lexer.popConsumer();
 			return;
 		}
