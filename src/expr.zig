@@ -115,7 +115,13 @@ pub const Expr = union(enum) {
 
 	pub fn clone(allocator: std.mem.Allocator, copy: *const Expr) OOM!*Expr {
 		const e = try allocator.create(Expr);
-		e.* = copy.*;
+		switch (copy.*) {
+			.Symbol => |s| e.* = .{.Symbol = try allocator.dupe(u8, s)},
+			.Pair => |p| e.* = .{.Pair = .{try Expr.clone(allocator, p[0]), try Expr.clone(allocator, p[1])}},
+			else => {
+				e.* = copy.*;
+			}
+		}
 		return e;
 	}
 
@@ -145,7 +151,7 @@ pub const Expr = union(enum) {
 			.Closure => |f| {
 				try writer.print("(fn ({any})\n ", .{f.params});
 				try format(f.body, writer);
-				try writer.writeAll(")\n");
+				try writer.writeAll(")");
 			}
 		}
 	}

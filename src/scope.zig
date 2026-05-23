@@ -3,7 +3,7 @@ const std = @import("std");
 const Expr = @import("expr.zig").Expr;
 
 const Binding = struct {
-	value: Expr,
+	value: *Expr,
 	mutable: bool,
 };
 
@@ -61,7 +61,7 @@ pub fn getExpr(
 	allocator: std.mem.Allocator,
 ) ?*Expr {
 	return if (self.get(name)) |b|
-		Expr.clone(allocator, &b.value) catch null
+		Expr.clone(allocator, b.value) catch null
 	else
 		null;
 }
@@ -69,7 +69,7 @@ pub fn getExpr(
 pub fn set(
 	self: *Scope,
 	name: []const u8,
-	value: Expr,
+	value: *Expr,
 ) !void {
 	const binding = self.getPtr(name)
 		orelse return error.UnboundSymbol;

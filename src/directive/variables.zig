@@ -28,11 +28,11 @@ pub fn fnLet(
 ) eval.EvalError!*Expr {
 	if (args.len != 2)return error.ArityError;
 	const name = switch (args[0].*) {
-		.Symbol => |s| s,
+		.Symbol => |s| try allocator.dupe(u8, s),
 		else => return error.TypeError,
 	};
 	const value = try eval.eval(args[1], scope, callable, allocator);
-	try scope.def(name, .{.value = value.*, .mutable = false});
+	try scope.def(name, .{.value = try Expr.clone(allocator, value), .mutable = false});
 	allocator.destroy(value);
 	return Expr.nil(allocator);
 }
@@ -45,11 +45,11 @@ pub fn fnVar(
 ) eval.EvalError!*Expr {
 	if (args.len != 2)return error.ArityError;
 	const name = switch (args[0].*) {
-		.Symbol => |s| s,
+		.Symbol => |s| try allocator.dupe(u8, s),
 		else => return error.TypeError,
 	};
 	const value = try eval.eval(args[1], scope, callable, allocator);
-	try scope.def(name, .{.value = value.*, .mutable = true});
+	try scope.def(name, .{.value = try Expr.clone(allocator, value), .mutable = true});
 	allocator.destroy(value);
 	return Expr.nil(allocator);
 }
@@ -67,7 +67,7 @@ pub fn fnSet(
 		else => return error.TypeError,
 	};
 	const value = try eval.eval(args[1], scope, callable, allocator);
-	try scope.set(name, value.*);
+	try scope.set(name, try Expr.clone(allocator, value));
 	allocator.destroy(value);
 	return Expr.nil(allocator);
 }

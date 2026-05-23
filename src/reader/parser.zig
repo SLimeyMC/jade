@@ -19,8 +19,8 @@ TopLevelProducedValue,
 const OOM = std.mem.Allocator.Error;
 
 const Frame = struct {
-	root: ?*Expr,
-	tail: *Expr,
+	root: ?*Expr = null,
+	tail: *Expr = undefined,
 };
 const Frames = std.ArrayList(Frame);
 
@@ -32,10 +32,7 @@ tokens: []Token,
 i: usize,
 
 pub fn pushFrame(self: *Parser) OOM!void {
-	try self.frames.append(self.gpa, .{
-		.root = null,
-		.tail = try Expr.nil(self.gpa),
-	});
+	try self.frames.append(self.gpa, .{});
 	self.current = &self.frames.items[self.frames.items.len - 1];
 }
 

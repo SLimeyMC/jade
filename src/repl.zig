@@ -53,6 +53,11 @@ pub fn main(init: std.process.Init) !void {
 			const exprs = try reader.parse(allocator, tokens);
 			defer allocator.free(exprs);
 
+			var iter = env.map.valueIterator();
+			while (iter.next()) |binding| {
+				try Expr.format(binding.value, stdout);
+			} else { try stdout.flush(); }
+
 			for (exprs) |expr| {
 				try stdout.flush();
 				const result = try jade.eval(expr, &env, &callables, allocator);

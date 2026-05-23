@@ -57,7 +57,7 @@ fn evalPair(expr: *Expr, scope: *Scope, callables: *Callables, allocator: std.me
 
 			for (fun.params, args.items) |param, arg| {
 				try child.def(param, .{
-					.value = arg.*,
+					.value = arg,
 					.mutable = false,
 				});
 			}
@@ -112,7 +112,7 @@ fn evalPair(expr: *Expr, scope: *Scope, callables: *Callables, allocator: std.me
 			const expanded = try fn_special(args.items, scope, callables, allocator);
 			break :blk expanded;
 		},
-	} else if (scope.get(name)) |e| switch (e.value) {
+	} else if (scope.get(name)) |e| switch (e.value.*) {
 		.Closure => |fun| {
 			var args = try std.ArrayList(*Expr).initCapacity(allocator, 64);
 			defer args.deinit(allocator);
@@ -128,7 +128,7 @@ fn evalPair(expr: *Expr, scope: *Scope, callables: *Callables, allocator: std.me
 
 			for (fun.params, args.items) |param, arg| {
 				try child.def(param, .{
-					.value = arg.*,
+					.value = arg,
 					.mutable = false,
 				});
 			}
