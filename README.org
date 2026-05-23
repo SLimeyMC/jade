@@ -4,116 +4,162 @@
 #+SINCE: 0.1
 
 * Outline
-Jade are dialect of Lisp. To make an extensible configuration file where data and code is indistinguishable. Currently it is in production and most if feature hasn't been implemented. This README serve as what could be of the language once everything is implemented.
+Jade is a collection of tools and experiments that may eventually grow into an extensible river window manager ecosystem.
 
-The only macro that exist in Jade are
+It will soon include:
 
-: 'value -> (quote value)
-: `value -> (quasiquoute value)
-: ,value -> (unqoute value)
-: ,@value -> (unquote-splice value)
-: @value -> (tag value)
-: #value -> (hash value)
-: $value -> (ref value)
-: $value.subvalue -> (ref value subvalue)
-: :value) -> (on value)
-/currently reader don't parse ~#~, ~,@~, ~@~, ~:~ as unique symbol./
+- [ ] Layouting library
+  - Scene tree
+  - Node tag tree
+  - Composition over arrangement
+- [ ] Widgeting library
+  - Simple wrapper over better toolkit
+- [ ] language & runtime library
+  - Reader & Evaluator
+  - Analysis & type-checker
+  - Runtime references
+- [ ] Window manager (endgame)
+  - River wm
+  - Scrolling layout
+  - An area, where window laid inside with its own arrangement logic
+  - Tag are relationship to other tags
+  - Modal and sequence keybinding
 
-The only literal reader can parse is string, pair, and nil. Integer, boolean exist but they are part of the evaluator, say you write true, the evaluator will parse it as string of "true" but evaluator can have ability of instead parsing it as boolean true, think of it as javascript string interpolation. List, map and so on are using the same expression so ~(List 1 2)~ or ~(Map (a 2) (b 1))~. Sometimes symbol needed space, in this case wrap the symbol with ~||~, for example ~|hello world|~, use ~\|~ to escape. There are /no/ interpolation or templating inside the symbol unless the library provided it.
+This is a long-term side project and may significantly change direction or even get abandoned over time.
 
-Jade are made to be as small as possible, and that the evaluator can be injected with as many feature as possible. The smallest possible feature is just printing out a single symbol, parentheses with multiple symbol doesn't even work without the quoting, which need to be added to the evaluator.
+* Jade Language
 
-Jade are divided into 3 step. Read, parsing the expression while expanding macro, they are stateless and won't do any checking outside of parsing (in this case turning code into AST, not compiling). Analysis, checking the correctness of the code, the analysis will check for number of argument or type of each argument (if provided, type are optional and library can opt to not do it) [[read more][]]. Then there are evaluator, think of it as the runtime that evaluate the expression into it's smallest possible expression. For example
+Jade is a minimal Lisp dialect for extensible configuration systems where code and data are indistinguishable. Most features are evaluator-provided rather than built into the language itself.
 
-: (= 1 (+ 2 -1)) ;; the base
-: (= 1 1) ;; the + evaluate 2 + -1 returning 1
-: t ;; the = evaluate 1 is equal to 1 so true which is symbolized as t
+** Core Syntax
 
-* Keyword
-While Jade doesn't need keyword, there are built in provided by the library. For example:
+Reader macros:
 
-: (let x :int 1) ;; declare a variable of x with value of 1
-: (var y :int 1) ;; declare a mutable variable of x with value of 1
-: (set! y 1) ;; set y with value of 1
-: (ref window) ;; referenced a global variable of z (provided by runtime)
-: (when (cond1 expr1) (cond2 expr2) ;; a chained if where it run when the condition are met
-: (lambda (param) body) ;; a lambda declaration
-: (list 1 2 3) ;; construct a list backing which evaluated into expression of (ref <name>)
-: (map (a 1) (b 2)) ;; construct a list backing which evaluated into expression of (ref <name>)
+: 'x     -> (quote x)
+: `x     -> (quasiquote x)
+: ,x     -> (unquote x)
+: ,@x    -> (unquote-splice x)
+: @x     -> (tag x)
+: #x     -> (hash x)
+: $x     -> (ref x)
+: $x.y   -> (ref x y)
+: :x     -> (on x)
 
-Also to type for list it would be :[_]:int and map :[str]:int.
+The reader only parses strings, pairs, and nil. Numbers, booleans, and other literals are readily-defined symbols. Symbols with spaces use ~|hello world|~.
 
-: ;; operator like + - * / where it run from left to the right
-: ;; operator like = > < <= >= where it check equality for each symbol with && for each succesor to it's predecessor
+** Architecture
 
-There are other keyword that is sensitive to context, they are evaluated as is other than the exception:
+Jade has three stages:
 
-: (tag |this is doc|) ;; tag can be think of as tagging something.
-: (empty) ;; empty can be think of empty list (because () is equal to nil), although this keyword are sensitive to context.
-: (else cond2) ;; else here for cond block
+1. Read :: Parse expressions and expand reader macros into AST.
+2. Analysis :: Optional validation such as type checking or arity checking.
+3. Evaluation :: Reduce expressions into simpler forms.
 
-* Evaluation
-In Jade, the only allocation that happen are stack local. There are no borrowing or anything, because concept of function must be total. This is to ensure declarativity of the configuration. For example:
+Example:
 
-#+BEGIN_SRC code_1
-jade>(let +2 (fun (:int arg1 :int @|Addition of two integer|)
-	>  (+ arg1 2)))
-jade> (+2 1)
-   ~> 3
-jade>;; Here the +2 are wired to previously declared symbol of +2 which is function accepting arg1, that is 1 and return 3
-jade>(let x 1)
-jade>(let y 1)
-jade>(= x y)
-   ~> t
-jade>(let check (fun (a b) (do
-	>   (let a (+2 a))
-	>   (+ a b x)))) ;; here nothing happen, must set! and that a create new stack local variable, ignoring parameter a and x reference global x
-jade>;; example
-	>(fun set-window width height
-	> (set! $window.size (width height))
+: (= 1 (+ 2 -1))
+: (= 1 1)
+: t
+
+: (let x :int 1)
+: (var y :int 1)
+: (set! y 1)
+
+: (lambda (param) body)
+
+: (list 1 2 3)
+: (map (a 1) (b 2))
+
+: (when
+:   (cond1 expr1)
+:   (cond2 expr2))
+
+Type examples:
+
+: :[_]:int
+: :[str]:int
+
+** Evaluation Model
+
+Jade emphasizes declarative evaluation and stack-local allocation. Functions are intended to be total and pass-by-value.
+
+Example:
+
+#+BEGIN_SRC lisp
+(let +2
+  (fun (:int arg1)
+    (+ arg1 2)))
+
+(+2 1) ;; => 3
 #+END_SRC
 
-/multi-line expression is not supported yet/
-
 ** Quoting
-In jade we have quote to escape evaluation say
 
-: (let x 2)
-: x ;; become 2
-: 'x ;; however it is just x
+Quote escapes evaluation:
 
-But then something like ~`~ and ~,~ which is a partial escape where ~,~ signal to evaluate the expression. The ~,@~ signal to inject the evaluation meaning
+: x    ;; evaluated
+: 'x   ;; literal symbol
 
-: (let x '(2 3))
-: `(1 ,x 4) ;;-> (1 (2 3) 4)
-: `(1 ,@x 4) ;;-> (1 2 3 4)
+Quasiquote supports partial evaluation:
 
-* FAQ
+#+BEGIN_SRC lisp
+(let x '(2 3))
 
-Q: Why not make the special symbol (~@~, ~#~, ~$~, ~:~) part of symbol instead of being parsed as pair to it's value?
+`(1 ,x 4)   ;; => (1 (2 3) 4)
+`(1 ,@x 4) ;; => (1 2 3 4)
+#+END_SRC
 
-A: This is to make the evaluator more decisive on choosing what to do. Instead of parsing for the ~@~ the reader attach
-it as unary to the value. The syntax becoming more concise and has clear standard for evaluator to follow.
+** Runtime References
 
-Q: What is ~(ref x)~?
+Runtime-provided bindings use ref:
 
-A: ~ref~ is a flag to reference to x. Jade provide a binder, where evaluator can provide a structured data. And then
-Jade match and inject with the proper symbol provided.
+: (ref window)
+: (set! $window.size (width height))
 
-* TODO Jade languange
+** Design Notes
+
+Special prefixes such as ~@~, ~#~, ~$~, and ~:~ are parsed into explicit unary forms rather than embedded into symbols. This keeps evaluator behavior predictable and simplifies parsing.
+
+* TODO Jade language
+
 ** TODO Directive
+
 *** TODO variable.zig
-Include let, var and set!.
+Include let, var, and set!.
+
 *** TODO references.zig
-Where library inject with value and it will read ~(ref x)~.
+Library-injected references for forms such as ~(ref x)~.
+
 *** TODO list.zig
-List, map and their counterpart, require references to work first.
-** TODO Proper object-free
-Currently I do quite horrendous allocation and it only freed on exit. Or whenever the evaluator feel calling free. Some part that I think can be optimized in the casting, since it doesn't need the old representation it can free that. But for now I am focusing on implementation.
-** TODO Analysis with type-checker, and so on.
-Basically traverse the tree with semantically enriched AST before evaluation.
-** TODO Possibly schema for validation?
-Could use ADA-like contract inside jade itself to do validation, so the user only implement evaluator with shape auto-generated(?).
-** TODO Possibly transpiler then build and link to host project?
-This is pretty far, but I feel like instead of a runtime just have it transpiled to zig then compile to library binary could work best.
-* TODO Jade wm?????
+List, map, and related structures. Requires references first.
+
+** TODO Proper object-free parser
+
+Current memory/freeing model is broken and recursively affects everything.
+Quote parsing, pipe parsing, and other reader features are unstable.
+
+Focus will shift toward stabilizing the reader and parser before adding more directives or analysis passes.
+
+** TODO Analysis and semantic checking
+
+Traverse expression with semantic enrichment (akin to AST) before evaluation.
+
+Planned features:
+- Type checking
+- Arity checking
+- Validation passes
+- Optional contracts
+
+** TODO Schema validation system
+
+Possibly ADA-like contracts written in Jade itself.
+
+Potential goal:
+- User defines schema/contracts
+- Evaluator shape or bindings generated automatically
+
+** TODO Transpiler and native compilation
+
+Possibly transpile Jade into Zig and compile directly into linked libraries instead of using a runtime evaluator.
+
+Very experimental and lower priority.

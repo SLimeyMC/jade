@@ -7,13 +7,13 @@ pub fn build(b: *std.Build) void {
 	const jade_lang = b.addModule("jade", .{
 		.target = target,
 		.optimize = optimize,
-		.root_source_file = b.path("src/jade-lang.zig"),
+		.root_source_file = b.path("lang/jade-lang.zig"),
 	});
 
-    const exe = b.addExecutable(.{
+    const lang_exe = b.addExecutable(.{
 		.name = "jade",
 		.root_module = b.createModule(.{
-            .root_source_file = b.path("src/repl.zig"),
+            .root_source_file = b.path("lang/repl.zig"),
             .target = target,
 			.optimize = optimize,
 			.imports = &.{
@@ -22,11 +22,11 @@ pub fn build(b: *std.Build) void {
 		}),
 	});
 
-    b.installArtifact(exe);
+    b.installArtifact(lang_exe);
 
     const run_step = b.step("run", "Run the app");
 
-    const run_cmd = b.addRunArtifact(exe);
+    const run_cmd = b.addRunArtifact(lang_exe);
 	run_step.dependOn(&run_cmd.step);
 
     run_cmd.step.dependOn(b.getInstallStep());
