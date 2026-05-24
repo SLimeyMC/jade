@@ -14,8 +14,8 @@ pub fn main(init: std.process.Init) !void {
 	defer arena.deinit();
 	const a = arena.allocator();
 
-	var env = Scope.init(a, null);
-	var callables = Callables.init(a);
+	var env = Scope.init(allocator, null);
+	var callables = Callables.init(allocator);
 
 	try directive.init(&callables);
 
@@ -50,11 +50,6 @@ pub fn main(init: std.process.Init) !void {
 		if (lexer.paren_depth == 0) {
 			const tokens = lexer.tokens.items;
 			const exprs = try reader.parse(a, tokens);
-
-			var iter = env.map.valueIterator();
-			while (iter.next()) |binding| {
-				try Expr.format(binding.value, stdout);
-			} else { try stdout.flush(); }
 
 			for (exprs) |expr| {
 				try stdout.flush();
