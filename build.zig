@@ -10,6 +10,12 @@ pub fn build(b: *std.Build) void {
 		.root_source_file = b.path("lang/jade-lang.zig"),
 	});
 
+	const log = b.addModule("jade", .{
+		.target = target,
+		.optimize = optimize,
+		.root_source_file = b.path("log/log.zig"),
+	});
+
     const lang_exe = b.addExecutable(.{
 		.name = "jade",
 		.root_module = b.createModule(.{
@@ -17,7 +23,8 @@ pub fn build(b: *std.Build) void {
             .target = target,
 			.optimize = optimize,
 			.imports = &.{
-				.{ .name = "jade", .module = jade_lang }
+				.{ .name = "jade", .module = jade_lang },
+				.{ .name = "log", .module = log },
 			}
 		}),
 	});
