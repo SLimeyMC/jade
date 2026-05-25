@@ -1,11 +1,11 @@
 const std = @import("std");
-const jade = @import("jade");
-const reader = jade.reader;
-const Scope = jade.Scope;
-const Expr = jade.Expr;
-const Callables = jade.Callables;
-const directive = jade.directive;
-const Lexer = jade.Lexer;
+const lang = @import("lang");
+const reader = lang.reader;
+const Scope = lang.Scope;
+const Expr = lang.Expr;
+const Callables = lang.Callables;
+const directive = lang.directive;
+const Lexer = lang.Lexer;
 
 pub fn main(init: std.process.Init) !void {
 	const allocator = init.gpa;
@@ -53,7 +53,7 @@ pub fn main(init: std.process.Init) !void {
 
 			for (exprs) |expr| {
 				try stdout.flush();
-				const result = try jade.eval(expr, &env, &callables, a);
+				const result = try lang.eval(expr, &env, &callables, a);
 				try stdout.writeAll("   ~> ");
 				try Expr.format(result, stdout);
 				try stdout.writeByte('\n');
