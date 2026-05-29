@@ -27,13 +27,11 @@ const Frames = std.ArrayList(Frame);
 gpa: std.mem.Allocator,
 exprs: std.ArrayList(*Expr),
 frames: Frames,
-current: *Frame,
 tokens: []Token,
 i: usize,
 
 pub fn pushFrame(self: *Parser) OOM!void {
 	try self.frames.append(self.gpa, .{});
-	self.current = &self.frames.items[self.frames.items.len - 1];
 }
 
 pub fn popFrame(self: *Parser) Error!void {
@@ -41,7 +39,6 @@ pub fn popFrame(self: *Parser) Error!void {
 
 	const done = self.frames.pop().?;
 	const expr = done.root orelse try Expr.nil(self.gpa);
-	if (self.frames.items.len != 0) self.current = &self.frames.items[self.frames.items.len - 1];
 	try self.emit(expr);
 }
 
@@ -51,13 +48,15 @@ pub fn emit(self: *Parser, expr: *Expr) OOM!void {
 		return;
 	}
 
-	const next = try Expr.pair(self.gpa, expr, try Expr.nil(self.gpa));
-	if (self.current.root == null) {
-		self.current.root = next;
-		self.current.tail = next.cdr();
+	const next = try Expr.pair(self.gpa, expr, try .nil(self.gpa));
+	var current = &self.frames.items[self.frames.items.len - 1];
+	if (current.root == null) {
+		current.root = next;
+		current.tail = next.cdr();
 	} else {
-		self.current.tail.* = next.*;
-		self.current.tail = next.cdr();
+		current.tail.* = next.*;
+		current.tail = current.tail.cdr();
+        self.gpa.destroy(next);
 	}
 }
 
@@ -66,7 +65,6 @@ pub fn parse(gpa: std.mem.Allocator, tokens: []Token) Error![]*Expr {
 		.gpa = gpa,
 		.exprs = std.ArrayList(*Expr).empty,
 		.frames = Frames.empty,
-		.current = undefined,
 		.tokens = tokens,
 		.i = 0,
 	};
@@ -115,7 +113,6 @@ fn makeUnary(self: *Parser, name: []const u8) OOM!void {
 		.root = root,
 		.tail = arg.car(),
 	});
-	self.current = &self.frames.items[self.frames.items.len - 1];
 }
 
 fn parseDollar(self: *Parser) Error!void {
