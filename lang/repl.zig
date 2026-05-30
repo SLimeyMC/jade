@@ -38,13 +38,11 @@ pub fn main(init: std.process.Init) !void {
 	try stdout.flush();
 
 	while (true) {
-		const line = stdin.takeDelimiter('\n') catch |err| switch (err) {
+		const line = stdin.takeDelimiterInclusive('\n') catch |err| switch (err) {
 			error.ReadFailed => break,
 			else => return err,
-		} orelse return;
-
-		const source = try std.mem.concat(a, u8, &.{ lexer.source, line, "\n" });
-		lexer.source = source;
+		};
+		lexer.source = line;
 
 		_ = try lexer.nextLine();
 
