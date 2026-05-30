@@ -155,4 +155,21 @@ pub const Expr = union(enum) {
 			}
 		}
 	}
+
+	pub fn free(self: *Expr, allocator: std.mem.Allocator) void {
+		switch (self.*) {
+			// .Symbol => |name| allocator.free(name),
+			.Pair => |p| {
+				p[0].free(allocator);
+				p[1].free(allocator);
+			},
+			.Closure => |c| {
+				c.body.free(allocator);
+				for (c.params) |param| allocator.free(param);
+			},
+			else => {},
+		}
+
+		allocator.destroy(self);
+	}
 };

@@ -5,7 +5,8 @@ const Scope = lang.Scope;
 const Expr = lang.Expr;
 const Callables = lang.Callables;
 const directive = lang.directive;
-const Lexer = lang.Lexer;
+const Lexer = lang.reader.Lexer;
+const Parser = lang.reader.Parser;
 
 pub fn main(init: std.process.Init) !void {
 	const allocator = init.gpa;
@@ -49,7 +50,7 @@ pub fn main(init: std.process.Init) !void {
 
 		if (lexer.paren_depth == 0) {
 			const tokens = lexer.tokens.items;
-			const exprs = try reader.parse(a, tokens);
+			const exprs = try Parser.parseAll(a, tokens);
 
 			for (exprs) |expr| {
 				try stdout.flush();
