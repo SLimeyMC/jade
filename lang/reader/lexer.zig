@@ -30,15 +30,9 @@ pub const Token = union(enum) {
 
 const Consumer = struct {
 	ptr: *anyopaque,
-	consume: *const fn (
-		*anyopaque,
-		*Lexer,
-		u8,
-	) Error!void,
-	deinit: *const fn (
-		*anyopaque,
-		std.mem.Allocator,
-	) void,
+	consume: *const fn (*anyopaque, *Lexer,u8) Error!void,
+	flush: *const fn (ptr: *anyopaque, lexer: *Lexer) Error!void,
+	deinit: *const fn (*anyopaque, std.mem.Allocator) void,
 };
 
 gpa: std.mem.Allocator,
@@ -140,7 +134,14 @@ fn pushConsumer(
 				gpa.destroy(selff);
 			}
 		}.d,
+		.flush = struct {
+			fn f(ptrr: *anyopaque, lexer: *Lexer) Error!void {
+				const selff: *T = @ptrCast(@alignCast(ptrr));
+				if (@hasDecl(T, "flush")) try selff.flush(lexer);
+			}
+		}.f,
 	});
+	return ptr;
 }
 
 fn popConsumer(self: *Lexer) Error!void {
@@ -225,11 +226,15 @@ const SymbolConsumer = struct {
 
 	fn consume(self: *SymbolConsumer, lexer: *Lexer, char: u8) Error!void {
 		if (isDelimiter(char)) {
-			try lexer.pushSlice(.Symbol, self.start);
-			try lexer.popConsumer();
+			try self.flush(lexer);
 			return;
 		}
 		lexer.omit();
+	}
+
+	fn flush(self: *SymbolConsumer, lexer: *Lexer) Error!void {
+		try lexer.pushSlice(.Symbol, self.start);
+		try lexer.popConsumer();
 	}
 };
 
@@ -290,5 +295,16 @@ const DollarConsumer = struct {
 
 		self.started = true;
 		lexer.omit();
+	}
+
+	fn flush(self: *DollarConsumer, lexer: *Lexer) Error!void {
+		if (!self.started) {
+			try lexer.push(.Dollar, self.start);
+			return;
+		}
+		// Flushing does not throw error for incomplete symbol for the time being. I need different way of handling it
+		// if (lexer.pos == self.start) return error.UnexpectedDotOnDollar;
+
+		try lexer.pushSlice(.Symbol, self.start);
 	}
 };
