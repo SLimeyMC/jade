@@ -132,10 +132,10 @@ pub const Expr = union(enum) {
 		switch (self.*) {
 			.Nil => try writer.writeAll("()"),
 			.Symbol => |s| try writer.writeAll(s),
-			.Pair => {
+			.Pair => |p| {
 				try writer.writeByte('(');
-				try format(self.car(), writer);
-				var node = self.cdr();
+				try format(p[0], writer);
+				var node = p[1];
 				while (node.* == .Pair) : (node = node.cdr()) {
 					try writer.writeByte(' ');
 					try format(node.car(), writer);
