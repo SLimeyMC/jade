@@ -60,7 +60,7 @@ pub fn initFromSlice(
 		.consumers = std.ArrayList(Consumer).empty,
 		.paren_depth = 0,
 	};
-	try lexer.pushConsumer(NormalConsumer, .{});
+	_ = try lexer.pushConsumer(NormalConsumer, .{});
 	return lexer;
 }
 
@@ -120,7 +120,7 @@ fn pushConsumer(
 	self: *Lexer,
 	comptime T: type,
 	value: T,
-) !void {
+) !*T {
 	const ptr = try self.gpa.create(T);
 	ptr.* = value;
 
@@ -177,7 +177,7 @@ pub fn nextLine(self: *Lexer) Error!bool {
 	return false;
 }
 
-
+// Since no state, this wont work with multiple character look ahead especially when their source is split
 const NormalConsumer = struct {
 	fn consume(_: *NormalConsumer, lexer: *Lexer, char: u8) Error!void {
 		switch (char) {
@@ -205,18 +205,32 @@ const NormalConsumer = struct {
 			} else try lexer.omitPush(.Comma, lexer.pos),
 			'|' => {
 				lexer.omit();
-				try lexer.pushConsumer(PipeConsumer, .{ .start = lexer.pos });
+				try (try lexer.pushConsumer(PipeConsumer, .{ .start = lexer.pos })).consume(lexer, char);
 			},
 			'$' => {
 				if (!lexer.options.dollar_reference) {
-					try lexer.pushConsumer(SymbolConsumer, .{ .start = lexer.pos });
+					try (try lexer.pushConsumer(SymbolConsumer, .{ .start = lexer.pos })).consume(lexer, char);
 					return;
 				}
 				lexer.omit();
-				try lexer.pushConsumer(DollarConsumer, .{ .start = lexer.pos });
+				try (try lexer.pushConsumer(DollarConsumer, .{ .start = lexer.pos })).consume(lexer, char);
 			},
-			else =>
-				try lexer.pushConsumer(SymbolConsumer, .{ .start = lexer.pos }),
+			';' => {
+				lexer.omit();
+				try (try lexer.pushConsumer(LineCommentConsumer, .{})).consume(lexer, char);
+			},
+			'#' => if (lexer.peek() == ';') {
+				lexer.omit();
+				const ptr = try lexer.gpa.create(NormalConsumer);
+				ptr.* = .{};
+
+				try (try lexer.pushConsumer(DatumCommentConsumer, .{
+					.normal_consumer = ptr,
+					.start_depth = lexer.paren_depth,
+					.start_tokens = lexer.tokens.items.len,
+				})).consume(lexer, char);
+			} else try (try lexer.pushConsumer(SymbolConsumer, .{ .start = lexer.pos })).consume(lexer, char),
+			else => try (try lexer.pushConsumer(SymbolConsumer, .{ .start = lexer.pos })).consume(lexer, char),
 		}
 	}
 };
@@ -306,5 +320,33 @@ const DollarConsumer = struct {
 		// if (lexer.pos == self.start) return error.UnexpectedDotOnDollar;
 
 		try lexer.pushSlice(.Symbol, self.start);
+	}
+};
+
+// FIXME: sending comment cause segfault with the symbol when formatting
+// Might have been the .start
+const LineCommentConsumer = struct {
+	fn consume(_: *LineCommentConsumer, lexer: *Lexer, char: u8) Error!void {
+		if (char == '\n') try lexer.popConsumer();
+		lexer.omit();
+	}
+};
+
+const DatumCommentConsumer = struct {
+	normal_consumer: *NormalConsumer,
+	start_depth: usize,
+	start_tokens: usize,
+
+	fn consume(self: *DatumCommentConsumer, lexer: *Lexer, char: u8) !void {
+		try self.normal_consumer.consume(lexer, char);
+		if (lexer.tokens.items.len == self.start_tokens) return;
+		switch(lexer.tokens.getLast()) {
+		// keep going, other type of token (dollar list) are sufficiently omitted
+			.Quote, .Backtick, .Comma, .CommaAt => return,
+			else => if (lexer.paren_depth == self.start_depth) {
+				lexer.tokens.shrinkRetainingCapacity(self.start_tokens);
+				try lexer.popConsumer();
+			}
+		}
 	}
 };
