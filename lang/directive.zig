@@ -1,6 +1,6 @@
 const Callables = @import("eval.zig").Callables;
-const arithmethic = @import("directive/arithmethic.zig");
 pub const Arithmethic = opaque {
+	const arithmethic = @import("directive/arithmethic.zig");
 	pub const fnAdd = arithmethic.fnAdd;
 	pub const fnSub = arithmethic.fnSub;
 	pub const fnMul = arithmethic.fnMul;
@@ -14,11 +14,12 @@ pub const Arithmethic = opaque {
 	}
 };
 
-// Cast here only work for literal, it won't cast expression that needed to be evaluated and error.
-// The way to cast complex expression is don't. Implicit conversion happen automatically, casting only useful with
-// structural equality.
-const cast = @import("directive/cast.zig");
+/// Only work for literal, it won't cast expression that needed to be evaluated and error.
+///
+/// The way to cast complex expression is don't. Implicit conversion happen automatically, casting only useful with
+/// structural equality.
 pub const Cast = opaque {
+	const cast = @import("directive/cast.zig");
 	pub const fnInt = cast.fnInt;
 	pub const fnIntOrZero = cast.fnIntOrZero;
 	pub const fnBool = cast.fnBool;
@@ -30,8 +31,9 @@ pub const Cast = opaque {
 	}
 };
 
-const comparison = @import("directive/comparison.zig");
 pub const Comparison = opaque {
+	const comparison = @import("directive/comparison.zig");
+	/// Will cast and check for similarity based on their datum representation
 	pub const fnEql = comparison.fnEql;
 	pub const fnStrictEql = comparison.fnStrictEql;
 	pub const fnLt = comparison.fnLt;
@@ -49,8 +51,8 @@ pub const Comparison = opaque {
 	}
 };
 
-const conditional = @import("directive/conditional.zig");
 pub const Conditional = opaque {
+	const conditional = @import("directive/conditional.zig");
 	pub const fnWhen = conditional.fnWhen;
 
 	pub fn init(callables: *Callables) !void {
@@ -58,9 +60,10 @@ pub const Conditional = opaque {
 	}
 };
 
-const logic = @import("directive/logic.zig");
 pub const Logic = opaque {
+	const logic = @import("directive/logic.zig");
 	pub const fnOr = logic.fnOr;
+	/// Nor capture not and may include more. It is equal to `NOT (A or B or ...)`
 	pub const fnNor = logic.fnNor;
 	pub const fnAnd = logic.fnAnd;
 
@@ -71,8 +74,8 @@ pub const Logic = opaque {
 	}
 };
 
-const quote = @import("directive/quote.zig");
 pub const Quote = opaque {
+	const quote = @import("directive/quote.zig");
 	pub const fnQuote = quote.fnQuote;
 	pub const fnQuasiquote = quote.fnQuasiquote;
 
@@ -82,8 +85,9 @@ pub const Quote = opaque {
 	}
 };
 
-const variables = @import("directive/variables.zig");
 pub const Variables = opaque {
+	const variables = @import("directive/variables.zig");
+	/// Create new lexical scoping, good when trying to not leak variable outside.
 	pub const fnDo = variables.fnDo;
 	pub const fnLet = variables.fnLet;
 	pub const fnVar = variables.fnVar;

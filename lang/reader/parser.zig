@@ -44,6 +44,7 @@ pub fn init(gpa: std.mem.Allocator, tokens: []Token) Parser {
 	};
 }
 
+/// Freed expression it still has inside the `exprs`.
 pub fn deinit(parser: *Parser) void {
 	for (parser.exprs.items) |expr| expr.free(parser.gpa);
 	parser.exprs.deinit(parser.gpa);
@@ -60,6 +61,7 @@ pub fn parseAll(gpa: std.mem.Allocator, tokens: []Token) Error![]*Expr {
 	return parser.exprs.toOwnedSlice(gpa);
 }
 
+/// Parse until no token is exhausted, throw `UnexpectedEOF` if expression is incomplete.
 pub fn next(self: *Parser) Error!void {
 	while (self.pos < self.tokens.len) {
 		const token = self.tokens[self.pos];

@@ -156,6 +156,8 @@ pub const Expr = union(enum) {
 		}
 	}
 
+	/// Does not freed the .Symbol slice, it had caused error before with how Lexer is structured and Expr dependency
+	/// to its slice.
 	pub fn free(self: *Expr, allocator: std.mem.Allocator) void {
 		switch (self.*) {
 			// .Symbol => |name| allocator.free(name),

@@ -1,3 +1,4 @@
+/// Example implementation of REPL which injected with as many directive as possible.
 const std = @import("std");
 const lang = @import("lang");
 const reader = lang.reader;

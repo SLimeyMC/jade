@@ -167,6 +167,9 @@ pub fn next(self: *Lexer) Error!void {
 	}
 }
 
+/// Processes input until after a newline has been dispatched to the active consumer.
+///
+/// Returns `true` when a newline is encountered and `false` on EOF.
 pub fn nextLine(self: *Lexer) Error!bool {
 	while (self.pos < self.source.len) {
 		const char = self.source[self.pos];

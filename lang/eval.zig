@@ -15,9 +15,13 @@ NotCallable,
 NotAList,
 } || std.mem.Allocator.Error;
 
+/// `Callable` are native function that always has highest precedence. Thus not allowing to be overridden by `Closure`.
 const Callable = union(enum) {
+	/// It first evaluated the argument before passing to the function. Does not freed argument expression.
 	eager: *const fn (args: []const *Expr, allocator: std.mem.Allocator) EvalError!*Expr,
+	/// It will evaluate the result of the macro. Does not freed argument expression.
 	macro: *const fn (args: []const *Expr, scope: *Scope, callables: *Callables, allocator: std.mem.Allocator) EvalError!*Expr,
+	/// It will not do anything afterward. Does not freed argument expression.
 	special: *const fn (args: []const *Expr, scope: *Scope, callables: *Callables, allocator: std.mem.Allocator) EvalError!*Expr,
 };
 
