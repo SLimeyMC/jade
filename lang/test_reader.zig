@@ -143,6 +143,78 @@ test "deep nesting" {
 	try expect(try exprSliceEql(exprs, &expected));
 }
 
+test "piped symbol with single char" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|a|");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "a")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
+test "piped symbol with single char and space" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|a |");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "a ")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
+test "piped symbol with unknown jumble" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|Ç»jý†*ù;å§g¿bþäLV½²O|");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "Ç»jý†*ù;å§g¿bþäLV½²O")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
+test "piped symbol with description" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|a simple description!|");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "a simple description!")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
+test "piped symbol with pipe escape" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|a\\||");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "a|")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
+test "piped symbol with pipe escape surrouned by space" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|A \\| B|");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "A | B")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
+test "piped symbol with slash escape" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|1\\\\2|");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "1\\2")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
+test "piped symbol with parentheses pair" {
+	const a = std.testing.allocator;
+	const exprs = try parseOwned(a, "|()|");
+	defer freeOwnedExprs(a, exprs);
+	const expected = [_]*Expr{try .symbol(a, "()")};
+	defer for (expected) |expecting| expecting.free(a);
+	try expect(try exprSliceEql(exprs, &expected));
+}
+
 test "quote symbol" {
 	const a = std.testing.allocator;
 	const exprs = try parseOwned(a, "'a");
@@ -380,6 +452,23 @@ test "missing close paren" {
 	);
 }
 
+test "expected escape char sequence after slash but found char instead" {
+	const a = std.testing.allocator;
+	try expectError(
+		error.ExpectedEscapeSequence,
+		parseOwned(a, "|\\a|"),
+	);
+}
+
+
+test "expected escape char sequence after slash but terminated early" {
+	const a = std.testing.allocator;
+	try expectError(
+		error.ExpectedEscapeSequence,
+		parseOwned(a, "|a\\|"),
+	);
+}
+
 test "quote without datum" {
 	const a = std.testing.allocator;
 	try expectError(
@@ -404,11 +493,26 @@ test "unquote without datum" {
 	);
 }
 
+test "unexpected dot on dollar" {
+	const a = std.testing.allocator;
+	try expectError(
+		error.UnexpectedDotOnDollar,
+		parseOwned(a, "$.a.b.c"),
+	);
+}
+
+test "unexpected double dot on dollar" {
+	const a = std.testing.allocator;
+	try expectError(
+		error.UnexpectedDotOnDollar,
+		parseOwned(a, "$a..b.c"),
+	);
+}
+
 test "datum comment without datum" {
 	const a = std.testing.allocator;
 	const expr = try parseOwned(a, "#;");
 	freeOwnedExprs(a, expr);
-	try expect(true);
 }
 
 fn parseOwned(a: std.mem.Allocator, source: []const u8) ![]*Expr {

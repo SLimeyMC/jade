@@ -78,6 +78,11 @@ pub fn next(self: *Parser) Error!void {
 pub fn consume(parser: *Parser, token: Token) Error!void {
 	switch (token) {
 		.Symbol => |s| try parser.emit(try .symbol(parser.gpa, s.slice)),
+		.PipeSymbol => |s| {
+			const name = try dupeUnescapePipeSymbol(parser.gpa, s.slice);
+			defer parser.gpa.free(name);
+			try parser.emit(try .symbol(parser.gpa, name));
+		},
 		.Newline => try parser.emit(try .symbol(parser.gpa, "newline")),
 		.LParen => try parser.pushFrame(),
 		.RParen => try parser.popFrame(),
@@ -87,7 +92,6 @@ pub fn consume(parser: *Parser, token: Token) Error!void {
 		.DoubleQuote => try parser.makeUnary("doublequote"),
 		.CommaAt => try parser.makeUnary("unquote-splice"),
 		.Dollar => try parser.parseDollar(),
-		.PipeSymbol => {},
 		.Dot => return error.UnexpectedDot,
 	}
 }
@@ -195,4 +199,35 @@ fn parseDollar(self: *Parser) Error!void {
 	}
 
 	try self.emit(root);
+}
+
+fn dupeUnescapePipeSymbol(
+	allocator: std.mem.Allocator,
+	input: []const u8,
+) Error![]u8 {
+	var out = try allocator.alloc(u8, input.len);
+	errdefer allocator.free(out);
+
+	var src: usize = 0;
+	var dst: usize = 0;
+
+	while (src < input.len) {
+		if (input[src] == '\\' and src + 1 < input.len) {
+			switch (input[src + 1]) {
+				'\\', '|' => {
+					out[dst] = input[src + 1];
+					src += 2;
+					dst += 1;
+					continue;
+				},
+				else => {},
+			}
+		}
+
+		out[dst] = input[src];
+		src += 1;
+		dst += 1;
+	}
+
+	return allocator.realloc(out, dst);
 }

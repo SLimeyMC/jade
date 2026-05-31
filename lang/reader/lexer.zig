@@ -8,6 +8,7 @@ UnexpectedRParen,
 UnexpectedEOF,
 UnterminatedSymbol,
 UnexpectedDotOnDollar,
+ExpectedEscapeSequence,
 } || std.mem.Allocator.Error || std.Io.Reader.Error;
 
 pub const Token = union(enum) {
@@ -262,13 +263,17 @@ const PipeConsumer = struct {
 	fn consume(self: *PipeConsumer, lexer: *Lexer, char: u8) Error!void {
 		switch (char) {
 			'\\' => self.escaping = !self.escaping,
-			'|' => if (!self.escaping) {
+			'|' => if (self.escaping) { self.escaping = false; } else {
 				try lexer.pushSlice(.PipeSymbol, self.start);
 				try lexer.popConsumer();
 			},
-			else => {},
+			else => if (self.escaping) return error.ExpectedEscapeSequence,
 		}
 		lexer.omit();
+	}
+
+	fn flush(_: *PipeConsumer, _: *Lexer) Error!void {
+		return error.ExpectedEscapeSequence;
 	}
 };
 
