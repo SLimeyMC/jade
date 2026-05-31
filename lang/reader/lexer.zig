@@ -273,7 +273,7 @@ const PipeConsumer = struct {
 	}
 
 	fn flush(_: *PipeConsumer, _: *Lexer) Error!void {
-		return error.ExpectedEscapeSequence;
+		return error.UnexpectedEOF;
 	}
 };
 

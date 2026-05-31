@@ -462,11 +462,18 @@ test "expected escape char sequence after slash but found char instead" {
 	);
 }
 
+test "pipe symbol iis terminated early" {
+	const a = std.testing.allocator;
+	try expectError(
+		error.UnexpectedEOF,
+		parseOwned(a, "|a"),
+	);
+}
 
 test "expected escape char sequence after slash but terminated early" {
 	const a = std.testing.allocator;
 	try expectError(
-		error.ExpectedEscapeSequence,
+		error.UnexpectedEOF,
 		parseOwned(a, "|a\\|"),
 	);
 }
