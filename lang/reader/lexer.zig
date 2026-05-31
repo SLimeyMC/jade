@@ -208,19 +208,19 @@ const NormalConsumer = struct {
 			} else try lexer.omitPush(.Comma, lexer.pos),
 			'|' => {
 				lexer.omit();
-				try (try lexer.pushConsumer(PipeConsumer, .{ .start = lexer.pos })).consume(lexer, char);
+				_ = try lexer.pushConsumer(PipeConsumer, .{ .start = lexer.pos });
 			},
 			'$' => {
 				if (!lexer.options.dollar_reference) {
-					try (try lexer.pushConsumer(SymbolConsumer, .{ .start = lexer.pos })).consume(lexer, char);
+					_ = try lexer.pushConsumer(SymbolConsumer, .{ .start = lexer.pos });
 					return;
 				}
 				lexer.omit();
-				try (try lexer.pushConsumer(DollarConsumer, .{ .start = lexer.pos })).consume(lexer, char);
+				_ = try lexer.pushConsumer(DollarConsumer, .{ .start = lexer.pos });
 			},
 			';' => {
 				lexer.omit();
-				try (try lexer.pushConsumer(LineCommentConsumer, .{})).consume(lexer, char);
+				_ = try lexer.pushConsumer(LineCommentConsumer, .{});
 			},
 			'#' => if (lexer.peek() == ';') {
 				lexer.omit();
@@ -289,6 +289,8 @@ const DollarConsumer = struct {
 				try lexer.popConsumer();
 				return;
 			}
+
+			if (char == '.') return error.UnexpectedDotOnDollar;
 
 			try lexer.push(.Dollar, lexer.pos);
 			self.started = true;
