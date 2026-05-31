@@ -81,8 +81,9 @@ pub const Expr = union(enum) {
 	}
 
 	pub fn symbol(allocator: std.mem.Allocator, name: []const u8) OOM!*Expr {
+		const copy = try allocator.dupe(u8, name);
 		const e = try allocator.create(Expr);
-		e.* = .{ .Symbol = name };
+		e.* = .{ .Symbol = copy };
 		return e;
 	}
 
@@ -156,11 +157,9 @@ pub const Expr = union(enum) {
 		}
 	}
 
-	/// Does not freed the .Symbol slice, it had caused error before with how Lexer is structured and Expr dependency
-	/// to its slice.
 	pub fn free(self: *Expr, allocator: std.mem.Allocator) void {
 		switch (self.*) {
-			// .Symbol => |name| allocator.free(name),
+			.Symbol => |name| allocator.free(name),
 			.Pair => |p| {
 				p[0].free(allocator);
 				p[1].free(allocator);
